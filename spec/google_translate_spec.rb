@@ -6,10 +6,13 @@ describe 'Google Translation' do
   include I18n::Tasks::GoogleTranslation
 
   tests = [
-      nil_value_test = ['nil-value-key', nil, nil],
-      text_test      = ['key', "Hello - %{user} O'neill!", "Hola - %{user} O'neill!"],
-      html_test      = ['html-key.html', "Hello - <b>%{user} O'neill</b>", "Hola - <b>%{user} O'neill</b>"],
-      array_test     = ['array-key', ['Hello.', nil, '', 'Goodbye.'], ['Hola.', nil, '', 'Adiós.']]
+      nil_value_test  = ['nil-value-key', nil, nil],
+      text_test       = ['key', "Hello - %{user} O'neill!", "Hola - %{user} O'neill!"],
+      html_test       = ['html-key.html', "Hello - <b>%{user} O'neill</b>", "Hola - <b>%{user} O'neill</b>"],
+      array_test      = ['array-key', ['Hello.', nil, '', 'Goodbye.'], ['Hola.', nil, '', 'Adiós.']],
+      handlebars_test = ['handlebars-key', "Hello {{username}}!", "Hola {{username}}!"],
+      template_test   = ['template-key', "Hello [username]!", "Hola [username]!"],
+      newline_test    = ['newline-key', "Hello %{user},\n\nWelcome to %{sitename}.", "Hola %{user},\n\nBienvenido a %{sitename}."]
   ]
 
   if ENV['GOOGLE_TRANSLATE_API_KEY']
@@ -41,11 +44,14 @@ describe 'Google Translation' do
           in_test_app_dir do
             task.data[:en] = build_tree('en' => {
                 'common' => {
-                    'a'             => 'λ',
-                    'hello'         => text_test[1],
-                    'hello_html'    => html_test[1],
-                    'array_key'     => array_test[1],
-                    'nil-value-key' => nil_value_test[1]
+                    'a'               => 'λ',
+                    'hello'           => text_test[1],
+                    'hello_html'      => html_test[1],
+                    'array_key'       => array_test[1],
+                    'nil-value-key'   => nil_value_test[1],
+                    'handlebars_key'  => handlebars_test[1],
+                    'template_key'    => template_test[1],
+                    'newline_key'     => newline_test[1]
                 }
             })
             task.data[:es] = build_tree('es' => {
@@ -59,6 +65,9 @@ describe 'Google Translation' do
             expect(task.t('common.hello_html', 'es')).to eq(html_test[2])
             expect(task.t('common.array_key', 'es')).to eq(array_test[2])
             expect(task.t('nil-value-key', 'es')).to eq(nil_value_test[2])
+            expect(task.t('common.handlebars_key', 'es')).to eq(handlebars_test[2])
+            expect(task.t('common.template_key', 'es')).to eq(template_test[2])
+            expect(task.t('common.newline_key', 'es')).to eq(newline_test[2])
             expect(task.t('common.a', 'es')).to eq('λ')
           end
         end

@@ -82,28 +82,32 @@ Get the key at https://code.google.com/apis/console.')
     # Allow for more interpolations inside tranlsations
     #  * %{val}  - Ruby
     #  * {{val}} - Handlebars
-    #  * [val]   - Custom email template variables
+    #  * [val]   - Custom email template variable
     #
     INTERPOLATION_KEY_RE      = /%\{[^}]+\}/.freeze
     INTERPOLATION_KEY_RE_JS   = /\{\{[^}]+\}\}/.freeze  # handlebars interpolation
-    INTERPOLATION_KEY_RE_TMP  = /\[[^}]+\]/.freeze      # custom email template interpolation
+    INTERPOLATION_KEY_RE_TMP  = /\[[^\]]+\]/.freeze     # custom email template interpolation
     UNTRANSLATABLE_STRING     = 'zxzxzx'.freeze
-    UNTRANSLATABLE_STRING_JS  = 'zzxxzz'.freeze
-    UNTRANSLATABLE_STRING_TMP = 'zzzxxx'.freeze
+    UNTRANSLATABLE_STRING_JS  = 'jsjsjs'.freeze
+    UNTRANSLATABLE_STRING_TMP = 'tmptmp'.freeze
 
     INTERPOLATION_MAP = {
-      INTERPOLATION_KEY_RE => UNTRANSLATABLE_STRING,
-      INTERPOLATION_KEY_RE_JS => UNTRANSLATABLE_STRING_JS,
+      INTERPOLATION_KEY_RE     => UNTRANSLATABLE_STRING,
+      INTERPOLATION_KEY_RE_JS  => UNTRANSLATABLE_STRING_JS,
       INTERPOLATION_KEY_RE_TMP => UNTRANSLATABLE_STRING_TMP
     }
 
     # 'hello, %{name}' => 'hello, <round-trippable string>'
     def replace_interpolations(value)
-      replaced = value
-      INTERPOLATION_MAP.each do |interpolation_key, untranslatable_str|
-        replaced = replaced.gsub interpolation_key, untranslatable_str
+      if value =~ INTERPOLATION_KEY_RE
+        value.gsub INTERPOLATION_KEY_RE, UNTRANSLATABLE_STRING
+      elsif value =~ INTERPOLATION_KEY_RE_JS
+        value.gsub INTERPOLATION_KEY_RE_JS, UNTRANSLATABLE_STRING_JS
+      elsif value =~ INTERPOLATION_KEY_RE_TMP
+        value.gsub INTERPOLATION_KEY_RE_TMP, UNTRANSLATABLE_STRING_TMP
+      else
+        value
       end
-      replaced
     end
 
     def restore_interpolations(untranslated, translated)
@@ -111,8 +115,10 @@ Get the key at https://code.google.com/apis/console.')
 
       restored = translated
       INTERPOLATION_MAP.each do |interpolation_key, untranslatable_str|
-        each_value = untranslated.scan(interpolation_key).to_enum
-        restored = restored.gsub(Regexp.new(untranslatable_str, Regexp::IGNORECASE)) { each_value.next }
+        if untranslated =~ interpolation_key
+          each_value = untranslated.scan(interpolation_key).to_enum
+          restored = restored.gsub(Regexp.new(untranslatable_str, Regexp::IGNORECASE)) { each_value.next }
+        end
       end
       restored
     end
