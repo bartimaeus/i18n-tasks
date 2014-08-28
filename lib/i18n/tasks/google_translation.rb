@@ -77,6 +77,9 @@ Get the key at https://code.google.com/apis/console.')
         else
           each_translated.next
       end
+    rescue Exception => e
+      puts "Exception: #{e.to_s}\n\n"
+      puts "Untranslated String: #{untranslated}\n\n"
     end
 
     # Allow for more interpolations inside tranlsations
