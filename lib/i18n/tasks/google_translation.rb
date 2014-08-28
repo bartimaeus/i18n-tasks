@@ -107,7 +107,6 @@ Get the key at https://code.google.com/apis/console.')
     end
 
     def restore_interpolations(untranslated, translated)
-      # binding.pry
       return translated if (untranslated !~ INTERPOLATION_KEY_RE && untranslated !~ INTERPOLATION_KEY_RE_JS && untranslated !~ INTERPOLATION_KEY_RE_TMP)
 
       restored = translated
