@@ -79,18 +79,43 @@ Get the key at https://code.google.com/apis/console.')
       end
     end
 
-    INTERPOLATION_KEY_RE  = /%\{[^}]+\}/.freeze
-    UNTRANSLATABLE_STRING = 'zxzxzx'.freeze
+    # Allow for more interpolations inside tranlsations
+    #  * %{val}  - Ruby
+    #  * {{val}} - Handlebars
+    #  * [val]   - Custom email template variables
+    #
+    INTERPOLATION_KEY_RE      = /%\{[^}]+\}/.freeze
+    INTERPOLATION_KEY_RE_JS   = /\{\{[^}]+\}\}/.freeze  # handlebars interpolation
+    INTERPOLATION_KEY_RE_TMP  = /\[[^}]+\]/.freeze      # custom email template interpolation
+    UNTRANSLATABLE_STRING     = 'zxzxzx'.freeze
+    UNTRANSLATABLE_STRING_JS  = 'zzxxzz'.freeze
+    UNTRANSLATABLE_STRING_TMP = 'zzzxxx'.freeze
+
+    INTERPOLATION_MAP = {
+      INTERPOLATION_KEY_RE => UNTRANSLATABLE_STRING,
+      INTERPOLATION_KEY_RE_JS => UNTRANSLATABLE_STRING_JS,
+      INTERPOLATION_KEY_RE_TMP => UNTRANSLATABLE_STRING_TMP
+    }
 
     # 'hello, %{name}' => 'hello, <round-trippable string>'
     def replace_interpolations(value)
-      value.gsub INTERPOLATION_KEY_RE, UNTRANSLATABLE_STRING
+      replaced = value
+      INTERPOLATION_MAP.each do |interpolation_key, untranslatable_str|
+        replaced = replaced.gsub interpolation_key, untranslatable_str
+      end
+      replaced
     end
 
     def restore_interpolations(untranslated, translated)
-      return translated if untranslated !~ INTERPOLATION_KEY_RE
-      each_value = untranslated.scan(INTERPOLATION_KEY_RE).to_enum
-      translated.gsub(Regexp.new(UNTRANSLATABLE_STRING, Regexp::IGNORECASE)) { each_value.next }
+      # binding.pry
+      return translated if (untranslated !~ INTERPOLATION_KEY_RE && untranslated !~ INTERPOLATION_KEY_RE_JS && untranslated !~ INTERPOLATION_KEY_RE_TMP)
+
+      restored = translated
+      INTERPOLATION_MAP.each do |interpolation_key, untranslatable_str|
+        each_value = untranslated.scan(interpolation_key).to_enum
+        restored = restored.gsub(Regexp.new(untranslatable_str, Regexp::IGNORECASE)) { each_value.next }
+      end
+      restored
     end
   end
 end
