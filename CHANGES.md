@@ -1,3 +1,19 @@
+## 0.7.8
+
+* Fix Google Translate issues with non-string keys [#100](https://github.com/glebm/i18n-tasks/pull/100)
+* Fix an issue with certain HAML not being parsed [#96](https://github.com/glebm/i18n-tasks/issues/96) [#102](https://github.com/glebm/i18n-tasks/pull/102)
+* Fix other minor issues
+
+## 0.7.7
+
+* Fix regression: keys are sorted once again [#92](https://github.com/glebm/i18n-tasks/issues/92).
+
+## 0.7.6
+
+* Add a post-install notice with setup commands
+* Fix a small typo in the config template [#91](https://github.com/glebm/i18n-tasks/pull/91).
+* Fix `find` crashing on relative keys (regression)
+
 ## 0.7.5
 
 Dynamic key usage inference fixes by [Mikko Koski](https://github.com/rap1ds):

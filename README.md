@@ -1,31 +1,28 @@
-# i18n-tasks [![Build Status][badge-travis]][travis] [![Coverage Status][badge-coverage]][coverage] [![Code Climate][badge-code-climate]][code-climate] [![Gemnasium][badge-gemnasium]][gemnasium]
+# i18n-tasks [![Build Status][badge-travis]][travis] [![Coverage Status][badge-coverage]][coverage] [![Code Climate][badge-code-climate]][code-climate] [![Gemnasium][badge-gemnasium]][gemnasium] [![Gitter](https://badges.gitter.im/Join Chat.svg)](https://gitter.im/glebm/i18n-tasks?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 i18n-tasks helps you find and manage missing and unused translations.
 
-## What?
-
-i18n-tasks scans calls such as `I18n.t('some.key')` and provides reports on key usage, missing, and unused keys.
-i18n-tasks can also can pre-fill missing keys, including from Google Translate, and it can remove unused keys as well.
-
-## Why?
-
-The default approach to locale data management with gems such as [i18n][i18n-gem] is flawed.
-If you use a key that does not exist, this will only blow up at runtime. Keys left over from removed code accumulate
-in the resource files and introduce unnecessary overhead on the translators. Translation files can quickly turn to disarray.
-
-i18n-tasks improves this by analysing code statically, without running it. It scans calls such as `I18n.t('some.key')` and provides reports on key usage, missing, and unused keys.
-It can also pre-fill missing keys, including from Google Translate, and it can remove unused keys as well.
-
-i18n-tasks can be used with any project using [i18n][i18n-gem] (default in Rails), or similar, even if it isn't ruby.
-
 <img width="539" height="331" src="https://raw.github.com/glebm/i18n-tasks/master/doc/img/i18n-tasks.png">
+
+This gem analyses code statically for key usages, such as `I18n.t('some.key')`, in order to:
+
+* Report keys that are missing or unused.
+* Pre-fill missing keys, optionally from Google Translate.
+* Remove unused keys.
+
+Thus addressing the two main problems of [i18n gem][i18n-gem] design:
+
+* Missing keys only blow up at runtime.
+* Keys no longer in use may accumulate and introduce overhead, without you knowing it.
 
 ## Installation
 
-Add to Gemfile:
+i18n-tasks can be used with any project using [i18n][i18n-gem] (default in Rails), or similar, even if it isn't ruby.
+
+Add it to the Gemfile:
 
 ```ruby
-gem 'i18n-tasks', '~> 0.7.5'
+gem 'i18n-tasks', '~> 0.7.8'
 ```
 
 Copy default [configuration file](#configuration) (optional):
@@ -117,7 +114,7 @@ Sort the keys:
 $ i18n-tasks normalize
 ```
 
-Sort the keys, and move them to the respective files as defined by (`config.write`)[#multiple-locale-files]:
+Sort the keys, and move them to the respective files as defined by [`config.write`](#multiple-locale-files):
 
 ```console
 $ i18n-tasks normalize -p
@@ -411,7 +408,7 @@ Add a custom task like the ones defined by the gem:
 
 ```ruby
 # my_commands.rb
-class MyCommands
+module MyCommands
   include ::I18n::Tasks::Command::Collection
   cmd :my_task, desc: 'my custom task'
   def my_task(opts = {})
@@ -422,7 +419,7 @@ end
 ```yaml
 # config/i18n-tasks.yml
 <%
-  require 'my_commands'
+  require './my_commands'
   I18n::Tasks::Commands.send :include, MyCommands
 %>
 ```

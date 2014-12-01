@@ -5,6 +5,17 @@ require 'fileutils'
 describe 'i18n-tasks' do
   delegate :run_cmd, :i18n_task, :in_test_app_dir, to: :TestCodebase
 
+  describe 'health' do
+    it 'outputs stats' do
+      t     = i18n_task
+      stats = in_test_app_dir { t.forest_stats(t.data_forest t.locales) }
+      out   = capture_stderr { run_cmd :health }
+      stats.values.each do |v|
+        expect(out).to include(v.to_s)
+      end
+    end
+  end
+
   describe 'missing' do
     let (:expected_missing_keys) {
       %w( en.used_but_missing.key en.relative.index.missing
@@ -57,7 +68,7 @@ describe 'i18n-tasks' do
     it 'removes unused' do
       in_test_app_dir do
         t = i18n_task
-        unused = expected_unused_keys.map { |k| SplitKey.split_key(k, 2)[1] }
+        unused = expected_unused_keys.map { |k| ::I18n::Tasks::SplitKey.split_key(k, 2)[1] }
         unused.each do |key|
           expect(t.key_value?(key, :en)).to be true
           expect(t.key_value?(key, :es)).to be true
@@ -76,6 +87,21 @@ describe 'i18n-tasks' do
   end
 
   describe 'normalize' do
+    it 'sorts the keys' do
+      in_test_app_dir do
+        run_cmd :normalize
+        en_yml_data = i18n_task.data.reload['en'].select_keys { |_k, node|
+          node.data[:path] == 'config/locales/en.yml'
+        }
+        expect(en_yml_data).to be_present
+        en_yml_data.nodes { |nodes|
+          next unless nodes.children
+          keys = nodes.children.map(&:key)
+          expect(keys).to eq keys.sort
+        }
+      end
+    end
+
     it 'moves keys to the corresponding files as per data.write' do
       in_test_app_dir {
         expect(File).to_not exist 'config/locales/devise.en.yml'

@@ -5,6 +5,9 @@ require 'i18n/tasks/html_keys'
 module I18n::Tasks
   module GoogleTranslation
 
+    # @param [I18n::Tasks::Tree::Siblings] forest to translate to the locales of its root nodes
+    # @param [String] from locale
+    # @return [I18n::Tasks::Tree::Siblings] translated forest
     def google_translate_forest(forest, from)
       forest.inject empty_forest do |result, root|
         translated = google_translate_list(root.key_values(root: true), to: root.key, from: from)
@@ -12,7 +15,8 @@ module I18n::Tasks
       end
     end
 
-    # @param [Array] list of [key, value] pairs
+    # @param [Array<[String, Object]>] list of key-value pairs
+    # @return [Array<[String, Object]>] translated list
     def google_translate_list(list, opts)
       return [] if list.empty?
       opts       = opts.dup
@@ -26,6 +30,8 @@ module I18n::Tasks
       result
     end
 
+    # @param [Array<[String, Object]>] list of key-value pairs
+    # @return [Array<[String, Object]>] translated list
     def fetch_google_translations(list, opts)
       from_values(list, EasyTranslate.translate(to_values(list), opts)).tap do |result|
         if result.blank?
@@ -38,21 +44,27 @@ module I18n::Tasks
 
     def validate_google_translate_api_key!(key)
       if key.blank?
-        raise CommandError.new('Set Google API key via GOOGLE_TRANSLATE_API_KEY environment variable or translation.api_key in config/i18n-tasks.yml.
-Get the key at https://code.google.com/apis/console.')
+        raise CommandError.new(I18n.t('i18n_tasks.google_translate.errors.no_api_key'))
       end
     end
 
+    # @param [Array<[String, Object]>] list of key-value pairs
+    # @return [Array<String>] values for translation extracted from list
     def to_values(list)
       list.map { |l| dump_value l[1] }.flatten.compact
     end
 
+    # @param [Array<[String, Object]>] list of key-value pairs
+    # @param [Array<String>] list of translated values
+    # @return [Array<[String, Object]>] translated key-value pairs
     def from_values(list, translated_values)
       keys                = list.map(&:first)
       untranslated_values = list.map(&:last)
       keys.zip parse_value(untranslated_values, translated_values.to_enum)
     end
 
+    # Prepare value for translation.
+    # @return [String, Array<String, nil>, nil] value for Google Translate or nil for non-string values
     def dump_value(value)
       case value
         when Array
@@ -61,10 +73,14 @@ Get the key at https://code.google.com/apis/console.')
         when String
           replace_interpolations value
         else
-          value
+          nil
       end
     end
 
+    # Parse translated value from the each_translated enumerator
+    # @param [Object] untranslated
+    # @param [Enumerator] each_translated
+    # @return [Object] final translated value
     def parse_value(untranslated, each_translated)
       case untranslated
         when Array
@@ -72,10 +88,8 @@ Get the key at https://code.google.com/apis/console.')
           untranslated.map { |from| parse_value(from, each_translated) }
         when String
           restore_interpolations untranslated, each_translated.next
-        when NilClass
-          nil
         else
-          each_translated.next
+          untranslated
       end
     rescue Exception => e
       puts "Exception: #{e.to_s}\n\n"
@@ -100,7 +114,8 @@ Get the key at https://code.google.com/apis/console.')
       INTERPOLATION_KEY_RE_TMP => UNTRANSLATABLE_STRING_TMP
     }
 
-    # 'hello, %{name}' => 'hello, <round-trippable string>'
+    # @param [String] value
+    # @return [String] 'hello, %{name}' => 'hello, <round-trippable string>'
     def replace_interpolations(value)
       if value =~ INTERPOLATION_KEY_RE
         value.gsub INTERPOLATION_KEY_RE, UNTRANSLATABLE_STRING
@@ -113,6 +128,9 @@ Get the key at https://code.google.com/apis/console.')
       end
     end
 
+    # @param [String] untranslated
+    # @param [String] translated
+    # @return [String] 'hello, <round-trippable string>' => 'hello, %{name}'
     def restore_interpolations(untranslated, translated)
       return translated if (untranslated !~ INTERPOLATION_KEY_RE && untranslated !~ INTERPOLATION_KEY_RE_JS && untranslated !~ INTERPOLATION_KEY_RE_TMP)
 

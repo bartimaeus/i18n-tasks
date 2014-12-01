@@ -2,7 +2,7 @@ module I18n::Tasks
   module Command
     module Options
       module Trees
-        extend Command::DSL
+        include Command::DSL
         format_opt = proc { |type|
           enum_opt_attr :f, :format=, enum_opt(type),
                         proc { |valid, default|
@@ -29,7 +29,7 @@ module I18n::Tasks
             when 'keys'
               puts forest.key_names(root: true)
             when *enum_opt(:data_format)
-              puts i18n.data.adapter_dump forest, format
+              puts i18n.data.adapter_dump forest.to_hash(true), format
           end
         end
 

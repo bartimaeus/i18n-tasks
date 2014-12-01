@@ -22,7 +22,7 @@ data:
   # key => file routes, matched top to bottom
   write:
     ## E.g., write devise and simple form keys to their respective files
-    # - ['{devise, simple_form}.*', 'config/locales/\1.%{locale.yml}']
+    # - ['{devise, simple_form}.*', 'config/locales/\1.%{locale}.yml']
     # Catch-all
     - config/locales/%{locale}.yml
     # `i18n-tasks normalize -p` will force move the keys according to these rules
@@ -59,10 +59,6 @@ search:
   ## Or, File.fnmatch patterns to include
   # include: ["*.rb", "*.html.slim"]
 
-  ## Lines starting with # or / are ignored by default
-  # ignore_lines:
-  #  - "^\\s*[#/](?!\\si18n-tasks-use)"
-
 ## Google Translate
 # translation:
 #   # Get an API key and set billing info at https://code.google.com/apis/console to use Google Translate
@@ -70,13 +66,16 @@ search:
 
 ## Consider these keys not missing
 # ignore_missing:
-#   - pagination.views.*
+# - 'errors.messages.{accepted,blank,invalid,too_short,too_long}'
+# - '{devise,simple_form}.*'
 
 ## Consider these keys used
 # ignore_unused:
-#   - 'simple_form.{yes,no}'
-#   - 'simple_form.{placeholders,hints,labels}.*'
-#   - 'simple_form.{error_notification,required}.:'
+# - 'activerecord.attributes.*'
+# - '{devise,kaminari,will_paginate}.*'
+# - 'simple_form.{yes,no}'
+# - 'simple_form.{placeholders,hints,labels}.*'
+# - 'simple_form.{error_notification,required}.:'
 
 ## Exclude these keys from `i18n-tasks eq-base' report
 # ignore_eq_base:
