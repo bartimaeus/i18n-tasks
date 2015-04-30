@@ -1,6 +1,9 @@
 # coding: utf-8
 class EventsController < ApplicationController
-  def show
+  def create
+  end
+
+  def show()
     redirect_to :edit, notice: I18n.t('cb.a')
 
     # args are ignored
@@ -26,5 +29,11 @@ class EventsController < ApplicationController
 
     # not missing
     I18n.t "hash.#{stuff}.a"
+
+    # relative key
+    I18n.t(".success")
+  end
+
+  def update
   end
 end

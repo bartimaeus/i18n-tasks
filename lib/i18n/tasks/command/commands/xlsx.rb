@@ -5,10 +5,10 @@ module I18n::Tasks
         include Command::Collection
 
         cmd :xlsx_report,
-            args: '[locale...]',
+            pos:  '[locale...]',
             desc: t('i18n_tasks.cmd.desc.xlsx_report'),
-            opt:  [cmd_opt(:locales),
-                   {short: :p, long: :path=, desc: 'Destination path', conf: {default: 'tmp/i18n-report.xlsx'}}]
+            args: [:locales,
+                   ['-p', '--path PATH', 'Destination path', default: 'tmp/i18n-report.xlsx']]
 
         def xlsx_report(opt = {})
           begin

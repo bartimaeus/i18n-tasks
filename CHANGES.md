@@ -1,3 +1,54 @@
+## 0.8.3
+
+* Fix regression: ActiveSupport < 4 support [#143](https://github.com/glebm/i18n-tasks/issues/143).
+
+## 0.8.2
+
+* Fix failure on nil values in the data config [#142](https://github.com/glebm/i18n-tasks/issues/142).
+
+## 0.8.1
+
+* The default config file now excludes `app/assets/images` and `app/assets/fonts`. Add `*.otf` to ignored extensions.
+* If an error message occurs when scanning, the error message now includes the filename [#141](https://github.com/glebm/i18n-tasks/issues/141).
+
+## 0.8.0
+
+* Parse command line arguments with `optparse`. Remove dependency on Slop.
+  Simplified commands DSL: options are mostly passed directly to optparse.
+* `search.relative_roots` default changed from from `%w(app/views)` to
+  `%w(app/views app/controllers app/helpers app/presenters)`.
+* `add-missing` now adds keys detected in source to all locales (previously just base) [#134](https://github.com/glebm/i18n-tasks/issues/134).
+* The default spec template no long requires `spec_helper` by default [Daniel Levenson](https://github.com/dleve123) [#135](https://github.com/glebm/i18n-tasks/pull/135).
+* `search.exclude` now appends to and not overrides the default exclude list. More extensions excluded by default:
+  *.css, *.sass, *.scss, *.less, *.yml, and *.json. [#137](https://github.com/glebm/i18n-tasks/issues/137).
+
+## 0.7.13
+
+* Fix relative keys when controller name consists of more than one word by [Yuji Nakayama](https://github.com/yujinakayama) [#132](https://github.com/glebm/i18n-tasks/pull/132).
+* Support keys with UTF8 word characters in the name. [#133](https://github.com/glebm/i18n-tasks/issues/133).
+* Change missing report column title from "Details" to "Value in other locales or source", display the locale [#130](https://github.com/glebm/i18n-tasks/issues/130).
+
+## 0.7.12
+
+* Handle relative keys in controllers nested in modules by [Alexander Tipugin](https://github.com/atipugin). [#128](https://github.com/glebm/i18n-tasks/issues/128).
+* Only write files that changed [#125](https://github.com/glebm/i18n-tasks/issues/125).
+* Allow `[]` in the non-strict scanner pattern [#127](https://github.com/glebm/i18n-tasks/issues/127).
+
+## 0.7.11
+
+* Set slop dependency to 3.5 to ensure Ruby 1.9 compatibility ([#121](https://github.com/glebm/i18n-tasks/pull/121)).
+  MRI 1.9 EOL is [February 23, 2015](https://www.ruby-lang.org/en/news/2014/01/10/ruby-1-9-3-will-end-on-2015/).
+  We will support 1.9 until rbx and jruby support 2.0.
+
+## 0.7.10
+
+* Support relative keys in controller action with argument
+
+## 0.7.9
+
+* Support relative keys in Rails controller actions by [Jessie A. Young](https://github.com/jessieay). [#46](https://github.com/glebm/i18n-tasks/issues/46).
+* Minor fixes
+
 ## 0.7.8
 
 * Fix Google Translate issues with non-string keys [#100](https://github.com/glebm/i18n-tasks/pull/100)

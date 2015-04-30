@@ -1,53 +1,33 @@
+require 'i18n/tasks/command/option_parsers/locale'
+
 module I18n::Tasks
   module Command
     module Options
       module Locales
         include Command::DSL
 
-        cmd_opt :locales, {
-            short: :l,
-            long:  :locales=,
-            desc:  t('i18n_tasks.cmd.args.desc.locales_filter'),
-            conf:  {as: Array, delimiter: /\s*[+:,]\s*/, default: 'all', argument: true, optional: false},
-            parse: :parse_locales
-        }
+        arg :locales,
+            '-l',
+            '--locales en,es,ru',
+            Array,
+            t('i18n_tasks.cmd.args.desc.locales_filter'),
+            parser:             OptionParsers::Locale::ListParser,
+            default:            'all',
+            consume_positional: true
 
-        cmd_opt :locale, {
-            short: :l,
-            long:  :locale=,
-            desc:  t('i18n_tasks.cmd.args.desc.locale'),
-            conf:  {default: 'base', argument: true, optional: false},
-            parse: :parse_locale
-        }
+        arg :locale,
+            '-l',
+            '--locale en',
+            t('i18n_tasks.cmd.args.desc.locale'),
+            parser:  OptionParsers::Locale::Parser,
+            default: 'base'
 
-        cmd_opt :locale_to_translate_from, cmd_opt(:locale).merge(
-            short: :f,
-            long: :from=,
-            desc: t('i18n_tasks.cmd.args.desc.locale_to_translate_from'))
-
-        def parse_locales(opt, key = :locales)
-          argv    = Array(opt[:arguments]) + Array(opt[key])
-          locales = if argv == ['all'] || argv == 'all' || argv.blank?
-                      i18n.locales
-                    else
-                      explode_list_opt(argv).map { |v| v == 'base' ? base_locale : v }
-                    end
-          locales.each { |locale| validate_locale!(locale) }
-          log_verbose "locales for the command are #{locales.inspect}"
-          opt[key] = locales
-        end
-
-        def parse_locale(opt, key = :locale)
-          val      = opt[key]
-          opt[key] = base_locale if val.blank? || val == 'base'
-          opt[key]
-        end
-
-        VALID_LOCALE_RE = /\A\w[\w\-\.]*\z/i
-
-        def validate_locale!(locale)
-          raise CommandError.new(I18n.t('i18n_tasks.cmd.errors.invalid_locale', invalid: locale)) if VALID_LOCALE_RE !~ locale
-        end
+        arg :locale_to_translate_from,
+            '-f',
+            '--from en',
+            t('i18n_tasks.cmd.args.desc.locale_to_translate_from'),
+            parser:  OptionParsers::Locale::Parser,
+            default: 'base'
       end
     end
   end

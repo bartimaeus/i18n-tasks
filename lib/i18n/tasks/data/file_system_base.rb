@@ -25,9 +25,9 @@ module I18n::Tasks
         locales = config[:locales].presence
         @locales = LocaleList.normalize_locale_list(locales || available_locales, base_locale, true)
         if locales.present?
-          log_verbose "data locales: #{@locales}"
+          log_verbose "locales read from config #{@locales * ', '}"
         else
-          log_verbose "data locales (inferred): #{@locales}"
+          log_verbose "locales inferred from data: #{@locales * ', '}"
         end
       end
 
@@ -110,7 +110,7 @@ module I18n::Tasks
       end
 
       def config=(config)
-        @config = DEFAULTS.deep_merge((config || {}).with_indifferent_access)
+        @config = DEFAULTS.deep_merge((config || {}).reject { |k, v| v.nil? }.with_indifferent_access)
         reload
       end
 

@@ -34,14 +34,20 @@ module I18n
         end
 
         def load_file(path)
-          adapter_parse ::File.read(path), self.class.adapter_name_for_path(path)
+          adapter_parse ::File.read(path, encoding: 'UTF-8'), self.class.adapter_name_for_path(path)
         end
 
         def write_tree(path, tree)
+          hash = tree.to_hash(true)
+          adapter = self.class.adapter_name_for_path(path)
+          content = adapter_dump(hash, adapter)
+          # Ignore unchanged data
+          return if File.file?(path) &&
+              # Comparing hashes for equality directly would ignore key order.
+              # Round-trip through the adapter and compare the strings instead:
+              content == adapter_dump(load_file(path), adapter)
           ::FileUtils.mkpath(File.dirname path)
-          ::File.open(path, 'w') { |f|
-            f.write adapter_dump(tree.to_hash(true), self.class.adapter_name_for_path(path))
-          }
+          ::File.open(path, 'w') { |f| f.write content }
         end
 
         module ClassMethods

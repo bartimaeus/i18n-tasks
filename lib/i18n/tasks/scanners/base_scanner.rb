@@ -10,27 +10,27 @@ module I18n::Tasks::Scanners
 
     attr_reader :config, :key_filter, :ignore_lines_res
 
+    ALWAYS_EXCLUDE = %w(*.jpg *.png *.gif *.svg *.ico *.eot *.otf *.ttf *.woff *.woff2 *.pdf
+                        *.css *.sass *.scss *.less *.yml *.json)
+
     def initialize(config = {})
       @config = config.dup.with_indifferent_access.tap do |conf|
-        conf[:relative_roots] = %w(app/views) if conf[:relative_roots].blank?
+        conf[:relative_roots] = %w(app/views app/controllers app/helpers app/presenters) if conf[:relative_roots].blank?
         conf[:paths]   = %w(app/) if conf[:paths].blank?
         conf[:include] = Array(conf[:include]) if conf[:include].present?
-        if conf.key?(:exclude)
-          conf[:exclude] = Array(conf[:exclude])
-        else
-          # exclude common binary extensions by default (images and fonts)
-          conf[:exclude] = %w(*.jpg *.png *.gif *.svg *.ico *.eot *.ttf *.woff *.pdf)
-        end
+        conf[:exclude] = Array(conf[:exclude]) + ALWAYS_EXCLUDE
         # Regexps for lines to ignore per extension
         if conf[:ignore_lines] && !conf[:ignore_lines].is_a?(Hash)
           warn_deprecated "search.ignore_lines must be a Hash, found #{conf[:ignore_lines].class.name}"
           conf[:ignore_lines] = nil
         end
         conf[:ignore_lines] ||= {
-            'rb'   => %q(^\s*#(?!\si18n-tasks-use)),
-            'haml' => %q(^\s*-\s*#(?!\si18n-tasks-use)),
-            'slim' => %q(^\s*(?:-#|/)(?!\si18n-tasks-use)),
-            'erb'  => %q(^\s*<%\s*#(?!\si18n-tasks-use)),
+            'rb'     => %q(^\s*#(?!\si18n-tasks-use)),
+            'opal'   => %q(^\s*#(?!\si18n-tasks-use)),
+            'haml'   => %q(^\s*-\s*#(?!\si18n-tasks-use)),
+            'slim'   => %q(^\s*(?:-#|/)(?!\si18n-tasks-use)),
+            'coffee' => %q(^\s*#(?!\si18n-tasks-use)),
+            'erb'    => %q(^\s*<%\s*#(?!\si18n-tasks-use)),
         }
         @ignore_lines_res = conf[:ignore_lines].inject({}) { |h, (ext, re)| h.update(ext => Regexp.new(re)) }
         @key_filter = nil
@@ -59,7 +59,7 @@ module I18n::Tasks::Scanners
 
     def read_file(path)
       result = nil
-      File.open(path, 'rb') { |f| result = f.read }
+      File.open(path, 'rb', encoding: 'UTF-8') { |f| result = f.read }
       result
     end
 
@@ -126,9 +126,9 @@ module I18n::Tasks::Scanners
       key
     end
 
-    VALID_KEY_CHARS = /[-\w.?!;:]/
+    VALID_KEY_CHARS = /(?:[[:word:]]|[-.?!;À-ž])/
     VALID_KEY_RE_STRICT = /^#{VALID_KEY_CHARS}+$/
-    VALID_KEY_RE = /^(#{VALID_KEY_CHARS}|[\#{@}])+$/
+    VALID_KEY_RE = /^(#{VALID_KEY_CHARS}|[:\#{@}\[\]])+$/
 
     def valid_key?(key, strict = false)
       return false if @key_filter && @key_filter_pattern !~ key

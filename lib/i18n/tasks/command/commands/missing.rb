@@ -4,25 +4,30 @@ module I18n::Tasks
       module Missing
         include Command::Collection
 
-        enum_opt :missing_types, I18n::Tasks::MissingKeys.missing_keys_types
-        cmd_opt :missing_types, enum_list_opt_attr(
-            :t, :types=, enum_opt(:missing_types),
-            proc { |valid, default| t('i18n_tasks.cmd.args.desc.missing_types', valid: valid, default: default) },
-            proc { |invalid, valid| t('i18n_tasks.cmd.errors.invalid_missing_type', invalid: invalid * ', ', valid: valid * ', ', count: invalid.length) })
+        missing_types = I18n::Tasks::MissingKeys.missing_keys_types
+        arg :missing_types,
+            '-t',
+            "--types #{missing_types * ','}",
+            Array,
+            t('i18n_tasks.cmd.args.desc.missing_types', valid: missing_types * ', '),
+            parser: OptionParsers::Enum::ListParser.new(
+                missing_types,
+                proc { |invalid, valid| I18n.t('i18n_tasks.cmd.errors.invalid_missing_type',
+                                               invalid: invalid * ', ', valid: valid * ', ', count: invalid.length) })
 
         cmd :missing,
-            args: '[locale ...]',
+            pos:  '[locale ...]',
             desc: t('i18n_tasks.cmd.desc.missing'),
-            opt:  cmd_opts(:locales, :out_format, :missing_types)
+            args: [:locales, :out_format, :missing_types]
 
         def missing(opt = {})
           print_forest i18n.missing_keys(opt), opt, :missing_keys
         end
 
         cmd :translate_missing,
-            args: '[locale ...]',
+            pos:  '[locale ...]',
             desc: t('i18n_tasks.cmd.desc.translate_missing'),
-            opt:  cmd_opts(:locales, :locale_to_translate_from) << cmd_opt(:out_format).except(:short)
+            args: [:locales, :locale_to_translate_from, arg(:out_format).from(1)]
 
         def translate_missing(opt = {})
           missing    = i18n.missing_diff_forest opt[:locales], opt[:from]
@@ -32,17 +37,19 @@ module I18n::Tasks
           print_forest translated, opt
         end
 
-        DEFAULT_ADD_MISSING_VALUE = '%{value_or_human_key}'
-
         cmd :add_missing,
-            args: '[locale ...]',
+            pos:  '[locale ...]',
             desc: t('i18n_tasks.cmd.desc.add_missing'),
-            opt:  cmd_opts(:locales, :out_format) <<
-                      cmd_opt(:value).merge(desc: proc { "#{cmd_opt(:value)[:desc].call}. #{t('i18n_tasks.cmd.args.default_text', value: DEFAULT_ADD_MISSING_VALUE)}" })
+            args: [:locales, :out_format, arg(:value) + [{default: '%{value_or_human_key}'}]]
 
         def add_missing(opt = {})
-          forest = i18n.missing_keys(opt).set_each_value!(opt[:value] || DEFAULT_ADD_MISSING_VALUE)
+          forest = i18n.missing_keys(opt).set_each_value!(opt[:value])
           i18n.data.merge! forest
+          # missing keys detected in the source are only returned in the base locale tree
+          # merge again in case such keys have been added to add them to other locales
+          forest_2 = i18n.missing_keys(opt).set_each_value!(opt[:value])
+          i18n.data.merge! forest_2
+          forest.merge! forest_2
           log_stderr t('i18n_tasks.add_missing.added', count: forest.leaves.count)
           print_forest forest, opt
         end
