@@ -10,18 +10,22 @@ describe 'i18n-tasks' do
   describe 'bin/i18n-tasks' do
     it 'shows help when invoked with no arguments, shows version on --version' do
       # These bin/i18n-tasks tests are executed in parallel for performance
-      [
-          proc {
-            out, err, status = Open3.capture3('bin/i18n-tasks')
-            expect(status).to be_success
-            expect(out).to be_empty
-            expect(err).to start_with('Usage: i18n-tasks [command] [options]')
-            expect(err).to include('Available commands', 'add-missing')
-          },
-          proc {
-            expect(%x[bin/i18n-tasks --version].chomp).to eq(I18n::Tasks::VERSION)
-          }
-      ].map { |test| Thread.start(&test) }.each(&:join)
+      in_test_app_dir do
+        [
+            proc {
+              out, err, status = Open3.capture3('../../bin/i18n-tasks')
+              expect(status).to be_success
+              expect(out).to be_empty
+              expect(err).to start_with('Usage: i18n-tasks [command] [options]')
+              expect(err).to include('Available commands', 'add-missing')
+              # a task from a plugin
+              expect(err).to include('greet')
+            },
+            proc {
+              expect(%x[../../bin/i18n-tasks --version].chomp).to eq(I18n::Tasks::VERSION)
+            }
+        ].map { |test| Thread.start(&test) }.each(&:join)
+      end
     end
   end
 
@@ -158,7 +162,7 @@ describe 'i18n-tasks' do
       }
       run_cmd 'add-missing', 'base'
       in_test_app_dir {
-        expect(YAML.load_file('config/locales/en.yml')['en']['used_but_missing']['key']).to eq I18n.t('i18n_tasks.common.key')
+        expect(YAML.load_file('config/locales/en.yml')['en']['used_but_missing']['key']).to eq 'Key'
         expect(YAML.load_file('config/locales/en.yml')['en']['present_in_es_but_not_en']['a']).to eq 'ES_TEXT'
       }
     end

@@ -1,3 +1,11 @@
+## 0.8.5
+
+* Fix regression: Plugin support [#153](https://github.com/glebm/i18n-tasks/issues/153).
+
+## 0.8.4
+
+* Support relative keys in mailers [#155](https://github.com/glebm/i18n-tasks/issues/155).
+
 ## 0.8.3
 
 * Fix regression: ActiveSupport < 4 support [#143](https://github.com/glebm/i18n-tasks/issues/143).
