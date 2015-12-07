@@ -1,8 +1,10 @@
 # i18n-tasks [![Build Status][badge-travis]][travis] [![Coverage Status][badge-coverage]][coverage] [![Code Climate][badge-code-climate]][code-climate] [![Gemnasium][badge-gemnasium]][gemnasium] [![Gitter](https://badges.gitter.im/Join Chat.svg)](https://gitter.im/glebm/i18n-tasks?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
+<a href='https://pledgie.com/campaigns/28570'><img alt='Click here to lend your support to: i18n-tasks for Ruby and make a donation at pledgie.com !' src='https://pledgie.com/campaigns/28570.png?skin_name=chrome' border='0' ></a>
+
 i18n-tasks helps you find and manage missing and unused translations.
 
-<img width="539" height="331" src="https://raw.github.com/glebm/i18n-tasks/master/doc/img/i18n-tasks.png">
+<img width="539" height="331" src="https://i.imgur.com/XZBd8l7.png">
 
 This gem analyses code statically for key usages, such as `I18n.t('some.key')`, in order to:
 
@@ -22,7 +24,7 @@ i18n-tasks can be used with any project using the ruby [i18n gem][i18n-gem] (def
 Add i18n-tasks to the Gemfile:
 
 ```ruby
-gem 'i18n-tasks', '~> 0.8.3'
+gem 'i18n-tasks', '~> 0.9.2'
 ```
 
 Copy the default [configuration file](#configuration):
@@ -70,7 +72,7 @@ $ i18n-tasks add-missing --help
 Usage: i18n-tasks add-missing [options] [locale ...]
     -l, --locales  Comma-separated list of locale(s) to process. Default: all. Special: base.
     -f, --format   Output format: terminal-table, yaml, json, keys, inspect. Default: terminal-table.
-    -v, --value    Value. Interpolates: %{value}, %{human_key}, %{value_or_human_key}. Default: %{value_or_human_key}.
+    -v, --value    Value. Interpolates: %{value}, %{human_key}, %{value_or_human_key}, %{key}. Default: %{value_or_human_key}.
     -h, --help     Display this help message.
 ```
 
@@ -94,7 +96,7 @@ $ i18n-tasks find 'auth.*'
 $ i18n-tasks find '{number,currency}.format.*'
 ```
 
-<img width="437" height="129" src="https://raw.github.com/glebm/i18n-tasks/master/doc/img/i18n-usages.png">
+<img width="437" height="129" src="https://i.imgur.com/VxBrSfY.png">
 
 ### Remove unused keys
 
@@ -103,8 +105,8 @@ $ i18n-tasks unused
 $ i18n-tasks remove-unused
 ```
 
-These tasks will infer [dynamic keys](#dynamic-keys) such as `t("category.\#{category.name}")` by default.
-Pass `-s` or `--strict` to disable this feature.
+These tasks can infer [dynamic keys](#dynamic-keys) such as `t("category.\#{category.name}")` if you set
+`search.strict` to false, or pass `--no-strict` on the command line.
 
 ### Normalize data
 
@@ -122,27 +124,32 @@ $ i18n-tasks normalize -p
 
 ### Compose tasks
 
-`i18n-tasks` also provides composable tasks for reading, writing and manipulating locale data.
+`i18n-tasks` also provides composable tasks for reading, writing and manipulating locale data. Examples below.
 
-For example, `add-missing` implemented with `missing`, `tree-set-value` and `data-merge`:
-
+`add-missing` implemented with `missing`, `tree-set-value` and `data-merge`:
 ```console
-$ i18n-tasks missing -fyaml fr | i18n-tasks tree-set-value 'TRME %{value}' | i18n-tasks data-merge
+$ i18n-tasks missing -f yaml fr | i18n-tasks tree-set-value 'TRME %{value}' | i18n-tasks data-merge
 ```
 
-Another example, `remove-unused` implemented with `unused` and `data-remove`:
+`remove-unused` implemented with `unused` and `data-remove` (sans the confirmation):
+```console
+$ i18n-tasks unused -f yaml | i18n-tasks data-remove
+```
 
-```bash
-$ i18n-tasks unused -fyaml | i18n-tasks data-remove
+Remove all keys in `fr` but not `en` from `fr`:
+```console
+$ i18n-tasks missing -t diff -f yaml en | i18n-tasks tree-rename-key en fr | i18n-tasks data-remove
 ```
 
 See the full list of tasks with `i18n-tasks --help`.
 
 ### Features and limitations
 
+`i18n-tasks` uses an AST scanner for `.rb` files, and a regexp-based scanner for other files, such as `.haml`.
+
 #### Relative keys
 
-`i18n-tasks` offers partial support for relative keys, such as `t '.title'`.
+`i18n-tasks` offers support for relative keys, such as `t '.title'`.
 
 ✔ Keys relative to the file path they are used in (see [relative roots configuration](#usage-search)) are supported.
 
@@ -154,28 +161,24 @@ See the full list of tasks with `i18n-tasks --help`.
 
 #### `t()` keyword arguments
 
-✔ `scope` keyword argument is supported, but only when it is the first argument.
+✔ `scope` keyword argument is fully supported by the AST scanner, and also by the Regexp scanner but only when it is the first argument.
 
-✘ `default` and other arguments are not supported.
-
-Parsing keyword arguments correctly with Regexp is difficult. This can be improved with an s-expression parser.
+✔ `default` argument can be used to pre-fill locale files (AST scanner only).
 
 #### Dynamic keys
 
-By default, unused report will detect some dynamic keys and not report them, e.g.:
+By default, dynamic keys such as `t "cats.#{cat}.name"` are not recognized.
+I encourage you to mark these with [i18n-tasks-use hints](#fine-tuning).
 
-```ruby
-t 'category.' + category.key      # all 'category.:' keys considered used (: denotes one key segment)
-t "category.#{category.key}.name" # all 'category.:.name' keys considered used
-```
-
-This will not be on by default in future versions, in favour of encouraging explicit [i18n-tasks-use hints](#fine-tuning).
-For now, you can disable dynamic key inference by passing `-s` or `--strict` to `unused` tasks.
+Alternatively, you can enable dynamic key inference by setting `search.strict` to `false` in the config. In this case,
+all the dynamic parts of the key will be considered used, e.g. `cats.tenderlove.name` would not be reported as unused.
+Note that only one section of the key is treated as a wildcard for each string interpolation; i.e. in this example,
+`cats.tenderlove.special.name` *will* be reported as unused.
 
 ## Configuration
 
 Configuration is read from `config/i18n-tasks.yml` or `config/i18n-tasks.yml.erb`.
-Inspect configuration with `i18n-tasks config`.
+Inspect the configuration with `i18n-tasks config`.
 
 Install the [default config file][config] with:
 
@@ -197,7 +200,8 @@ The default data adapter supports YAML and JSON files.
 #### Multiple locale files
 
 i18n-tasks can manage multiple translation files and read translations from other gems.
-To find out more the `data` options in the [config][config].
+To find out more see the `data` options in the [config][config].
+NB: By default, only `%{locale}.yml` files are read, not `namespace.%{locale}.yml`. Make sure to check the config.
 
 For writing to locale files i18n-tasks provides 2 options.
 
@@ -232,6 +236,9 @@ data:
     - 'config/locales/%{locale}.yml'
 ```
 
+If you want to have i18n-tasks reorganize your existing keys using `data.write`, either set the router to 
+`pattern_router` as above, or run `i18n-tasks normalize -p` (forcing the use of the pattern router for that run).
+
 ##### Key pattern syntax
 
 A special syntax similar to file glob patterns is used throughout i18n-tasks to match translation keys:
@@ -250,8 +257,11 @@ If you have implemented a custom adapter please share it on [the wiki][wiki].
 
 ### Usage search
 
+i18n-tasks uses an AST scanner for `.rb` files, and a regexp scanner for all other files.
+New scanners can be added easily: please refer to [this example](https://github.com/glebm/i18n-tasks/wiki/A-custom-scanner-example).
+
 See the `search` section in the [config file][config] for all available configuration options.
-An example of a custom scanner can be found here: https://github.com/glebm/i18n-tasks/issues/138#issuecomment-87255708.
+NB: By default, only the `app/` directory is searched.
 
 ### Fine-tuning
 
@@ -300,34 +310,7 @@ $ i18n-tasks xlsx-report
 ## Add new tasks
 
 Tasks that come with the gem are defined in [lib/i18n/tasks/command/commands](lib/i18n/tasks/command/commands).
-
-Add a custom task like the ones defined by the gem:
-
-```ruby
-# my_commands.rb
-module MyCommands
-  include ::I18n::Tasks::Command::Collection
-  cmd :my_task, desc: 'my custom task'
-  def my_task(opts = {})
-  end
-end
-```
-
-```yaml
-# config/i18n-tasks.yml
-<%
-  require './my_commands'
-  I18n::Tasks::Commands.send :include, MyCommands
-%>
-```
-
-Run with:
-
-```console
-$ i18n-tasks my-task
-```
-
-See more examples of custom tasks [on the wiki](https://github.com/glebm/i18n-tasks/wiki#custom-tasks).
+Custom tasks can be added easily, see the examples [on the wiki](https://github.com/glebm/i18n-tasks/wiki#custom-tasks).
 
 [MIT license]: /LICENSE.txt
 [travis]: https://travis-ci.org/glebm/i18n-tasks
@@ -341,5 +324,6 @@ See more examples of custom tasks [on the wiki](https://github.com/glebm/i18n-ta
 [config]: https://github.com/glebm/i18n-tasks/blob/master/templates/config/i18n-tasks.yml
 [wiki]: https://github.com/glebm/i18n-tasks/wiki "i18n-tasks wiki"
 [i18n-gem]: https://github.com/svenfuchs/i18n "svenfuchs/i18n on Github"
-[screenshot-find]: https://raw.github.com/glebm/i18n-tasks/master/doc/img/i18n-usages.png "i18n-tasks find output screenshot"
+[screenshot-i18n-tasks]: https://i.imgur.com/XZBd8l7.png "i18n-tasks screenshot"
+[screenshot-find]: https://i.imgur.com/VxBrSfY.png "i18n-tasks find output screenshot"
 [adapter-example]: https://github.com/glebm/i18n-tasks/blob/master/lib/i18n/tasks/data/file_system_base.rb

@@ -1,4 +1,3 @@
-# coding: utf-8
 require 'i18n/tasks/data/tree/node'
 require 'i18n/tasks/data/router/pattern_router'
 require 'i18n/tasks/data/router/conservative_router'
@@ -17,7 +16,7 @@ module I18n::Tasks
       DEFAULTS = {
           read:  ['config/locales/%{locale}.yml'],
           write: ['config/locales/%{locale}.yml']
-      }.with_indifferent_access
+      }
 
       def initialize(config = {})
         self.config  = config.except(:base_locale, :locales)
@@ -88,10 +87,12 @@ module I18n::Tasks
         @available_locales ||= begin
           locales = Set.new
           Array(config[:read]).map do |pattern|
-            [pattern, Dir.glob(pattern % {locale: '*'})] if pattern.include?('%{locale}')
+            [pattern, Dir.glob(pattern % {locale: '*'})] if pattern.include?('%{locale}'.freeze)
           end.compact.each do |pattern, paths|
-            p  = pattern.gsub('\\', '\\\\').gsub('/', '\/').gsub('.', '\.')
-            p  = p.gsub(/(\*+)/) { $1 == '**' ? '.*' : '[^/]*?' }.gsub('%{locale}', '([^/.]+)')
+            p  = pattern.gsub('\\'.freeze, '\\\\'.freeze).gsub('/'.freeze, '\/'.freeze).gsub('.'.freeze, '\.'.freeze)
+            p  = p.gsub(/(\*+)/) {
+              $1 == '**'.freeze ? '.*'.freeze : '[^/]*?'.freeze
+            }.gsub('%{locale}'.freeze, '([^/.]+)'.freeze)
             re = /\A#{p}\z/
             paths.each do |path|
               if re =~ path
@@ -110,7 +111,7 @@ module I18n::Tasks
       end
 
       def config=(config)
-        @config = DEFAULTS.deep_merge((config || {}).reject { |k, v| v.nil? }.with_indifferent_access)
+        @config = DEFAULTS.deep_merge((config || {}).reject { |k, v| v.nil? })
         reload
       end
 

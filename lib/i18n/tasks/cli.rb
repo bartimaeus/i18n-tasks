@@ -15,7 +15,9 @@ class I18n::Tasks::CLI
   def start(argv)
     auto_output_coloring do
       begin
-        run(argv)
+        if run(argv) == :exit_1
+          exit 1
+        end
       rescue OptionParser::ParseError => e
         error e.message, 64
       rescue I18n::Tasks::CommandError => e
@@ -46,10 +48,7 @@ class I18n::Tasks::CLI
   def commands
     # load base task to initialize plugins
     base_task
-    @commands ||= ::I18n::Tasks::Commands.cmds.dup.tap do |cmds|
-      # Hash#transform_keys is only available since activesupport v4.0.0
-      cmds.keys.each { |k| cmds[k.to_s.tr('_', '-')] = cmds.delete(k) }
-    end
+    @commands ||= ::I18n::Tasks::Commands.cmds.transform_keys { |k| k.to_s.tr('_'.freeze, '-'.freeze) }
   end
 
   private
@@ -62,7 +61,7 @@ class I18n::Tasks::CLI
     command = parse_command! argv
     options = optparse! command, argv
     parse_options! options, command, argv
-    [command.tr('-', '_'), options.update(arguments: argv)]
+    [command.tr('-'.freeze, '_'.freeze), options.update(arguments: argv)]
   end
 
   def optparse!(command, argv)
@@ -101,12 +100,14 @@ class I18n::Tasks::CLI
 
   def allow_help_arg_first!(argv)
     # allow `i18n-tasks --help command` in addition to `i18n-tasks command --help`
-    argv[0], argv[1] = argv[1], argv[0] if %w(-h --help).include?(argv[0]) && argv[1] && !argv[1].start_with?('-')
+    if %w(-h --help).include?(argv[0]) && argv[1] && !argv[1].start_with?('-'.freeze)
+      argv[0], argv[1] = argv[1], argv[0]
+    end
   end
 
   def parse_command!(argv)
     allow_help_arg_first! argv
-    if argv[0] && !argv[0].start_with?('-')
+    if argv[0] && !argv[0].start_with?('-'.freeze)
       if commands.keys.include?(argv[0])
         argv.shift
       else
@@ -160,7 +161,7 @@ class I18n::Tasks::CLI
   def parse_option(flag, val, argv, context)
     conf = flag.last.is_a?(Hash) ? flag.last : {}
     if conf[:consume_positional]
-      val = Array(val) + Array(flag.include?(Array) ? argv.flat_map { |x| x.split(',') } : argv)
+      val = Array(val) + Array(flag.include?(Array) ? argv.flat_map { |x| x.split(','.freeze) } : argv)
     end
     val = conf[:default] if val.nil? && conf.key?(:default)
     val = conf[:parser].call(val, context) if conf.key?(:parser)
@@ -168,7 +169,9 @@ class I18n::Tasks::CLI
   end
 
   def option_name(flag)
-    flag.detect { |f| f.start_with?('--') }.sub(/\A--/, '').sub(/[^\-\w].*\z/, '').to_sym
+    flag.detect { |f|
+      f.start_with?('--'.freeze)
+    }.sub(/\A--(\[no-\])?/, ''.freeze).sub(/[^\-\w].*\z/, ''.freeze).to_sym
   end
 
   def try_call(v)

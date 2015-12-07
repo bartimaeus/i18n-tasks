@@ -1,4 +1,3 @@
-# coding: utf-8
 class EventsController < ApplicationController
   def create
   end
@@ -31,7 +30,16 @@ class EventsController < ApplicationController
     I18n.t "hash.#{stuff}.a"
 
     # relative key
-    I18n.t(".success")
+    t(".success")
+
+    # i18n-tasks-use t('magic_comment')
+    magic
+
+    # default arg
+    I18n.t('default_arg', default: 'Default Text')
+
+    # only `t()` calls can use relative keys and not `I18n.t()` calls.
+    I18n.t('.not_relative')
   end
 
   def update

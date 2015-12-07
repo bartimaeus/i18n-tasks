@@ -1,4 +1,3 @@
-# coding: utf-8
 lib = File.expand_path('../lib', __FILE__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 require 'i18n/tasks/version'
@@ -8,6 +7,7 @@ Gem::Specification.new do |s|
   s.version       = I18n::Tasks::VERSION
   s.authors       = ['glebm']
   s.email         = ['glex.spb@gmail.com']
+  s.license       = 'MIT'
   s.summary       = %q{Manage localization and translation with the awesome power of static analysis}
   s.description   = <<-TEXT
 i18n-tasks helps you find and manage missing and unused translations.
@@ -25,24 +25,28 @@ TEXT
   if s.respond_to?(:metadata=)
     s.metadata = { 'issue_tracker' => 'https://github.com/glebm/i18n-tasks' }
   end
-  s.license       = 'MIT'
+  if s.respond_to?(:required_ruby_version=)
+    s.required_ruby_version = '~> 2.1'
+  end
 
   s.files         = `git ls-files`.split($/)
-  s.files         -= s.files.grep(%r{^doc/img/})
-  s.executables   = s.files.grep(%r{^bin/}) { |f| File.basename(f) }
+  s.files         -= s.files.grep(%r{^(doc/|\.|spec/)}) + %w(CHANGES.md config/i18n-tasks.yml Gemfile)
+  s.executables   = s.files.grep(%r{^bin/}) { |f| File.basename(f) } - %w(i18n-tasks.cmd)
   s.test_files    = s.files.grep(%r{^(test|spec|features)/})
   s.require_paths = ['lib']
 
-  s.add_dependency 'erubis'
-  s.add_dependency 'activesupport'
+  s.add_dependency 'activesupport', '>= 4.0.2'
+  s.add_dependency 'ast', '>= 2.1.0'
   s.add_dependency 'easy_translate', '>= 0.5.0'
-  s.add_dependency 'term-ansicolor'
-  s.add_dependency 'terminal-table', '>= 1.5.1'
-  s.add_dependency 'highline'
+  s.add_dependency 'erubis'
+  s.add_dependency 'highline', '>= 1.7.3'
   s.add_dependency 'i18n'
+  s.add_dependency 'parser', '>= 2.2.3.0'
+  s.add_dependency 'term-ansicolor', '>= 1.3.2'
+  s.add_dependency 'terminal-table', '>= 1.5.1'
   s.add_development_dependency 'axlsx', '~> 2.0'
   s.add_development_dependency 'bundler', '~> 1.3'
   s.add_development_dependency 'rake'
-  s.add_development_dependency 'rspec', '~> 3.0'
+  s.add_development_dependency 'rspec', '~> 3.3'
   s.add_development_dependency 'yard'
 end

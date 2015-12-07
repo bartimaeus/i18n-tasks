@@ -1,4 +1,3 @@
-# coding: utf-8
 # define all the modules to be able to use ::
 module I18n
   module Tasks
@@ -13,6 +12,27 @@ module I18n
 
       def verbose=(value)
         @verbose = value
+      end
+
+      # Add a scanner to the default configuration.
+      #
+      # @param scanner_class_name [String]
+      # @param scanner_opts [Hash]
+      # @return self
+      def add_scanner(scanner_class_name, scanner_opts = {})
+        scanners = I18n::Tasks::Configuration::DEFAULTS[:search][:scanners]
+        scanners << [scanner_class_name, scanner_opts]
+        scanners.uniq!
+        self
+      end
+
+      # Add commands to i18n-tasks
+      #
+      # @param commands_module [Module]
+      # @return self
+      def add_commands(commands_module)
+        ::I18n::Tasks::Commands.send :include, commands_module
+        self
       end
     end
 

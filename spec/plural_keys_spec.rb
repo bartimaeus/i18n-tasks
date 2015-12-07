@@ -1,7 +1,6 @@
-# coding: utf-8
 require 'spec_helper'
 
-describe 'Plural keys' do
+RSpec.describe 'Plural keys' do
   let(:task) { ::I18n::Tasks::BaseTask.new }
   before do
     TestCodebase.setup('config/locales/en.yml' => '')

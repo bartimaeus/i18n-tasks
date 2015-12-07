@@ -1,19 +1,23 @@
-# coding: utf-8
 require 'spec_helper'
 require 'fileutils'
 require 'open3'
 
 # Integration tests
-describe 'i18n-tasks' do
-  delegate :run_cmd, :run_cmd_capture_stderr, :i18n_task, :in_test_app_dir, to: :TestCodebase
+RSpec.describe 'i18n-tasks' do
+  delegate :run_cmd, :run_cmd_capture_stdout_and_result, :run_cmd_capture_stderr, :i18n_task, :in_test_app_dir,
+           to: :TestCodebase
 
   describe 'bin/i18n-tasks' do
     it 'shows help when invoked with no arguments, shows version on --version' do
+      next if defined?(RUBY_ENGINE) && RUBY_ENGINE == 'jruby'
       # These bin/i18n-tasks tests are executed in parallel for performance
+      env = {'I18N_TASKS_BIN_SIMPLECOV_COVERAGE' => '1'}
       in_test_app_dir do
+        clean_coverage_logging = -> s { s.sub /(?:\n^|\A)(?:Coverage = |.*Reporting coverage).*(?:$\n|\z)/i, '' }
         [
             proc {
-              out, err, status = Open3.capture3('../../bin/i18n-tasks')
+              out, err, status = Open3.capture3(env, 'bundle exec ../../bin/i18n-tasks')
+              out, err = clean_coverage_logging[out], clean_coverage_logging[err]
               expect(status).to be_success
               expect(out).to be_empty
               expect(err).to start_with('Usage: i18n-tasks [command] [options]')
@@ -22,7 +26,11 @@ describe 'i18n-tasks' do
               expect(err).to include('greet')
             },
             proc {
-              expect(%x[../../bin/i18n-tasks --version].chomp).to eq(I18n::Tasks::VERSION)
+              out, err, status = Open3.capture3(env, 'bundle exec ../../bin/i18n-tasks --version')
+              out, err = clean_coverage_logging[out], clean_coverage_logging[err]
+              expect(status).to be_success
+              expect(err).to be_empty
+              expect(out.chomp).to eq I18n::Tasks::VERSION
             }
         ].map { |test| Thread.start(&test) }.each(&:join)
       end
@@ -43,29 +51,40 @@ describe 'i18n-tasks' do
   end
 
   describe 'missing' do
-    let (:expected_missing_keys) {
-      %w( en.used_but_missing.key
-          en.relative.index.missing
-          es.missing_in_es.a
-          en.present_in_es_but_not_en.a
-          en.hash.pattern_missing.a
-          en.hash.pattern_missing.b
-          en.missing_symbol_key
-          en.missing_symbol.key_two
-          en.missing_symbol.key_three
-          es.missing_in_es_plural_1.a
-          es.missing_in_es_plural_2.a
-          en.missing-key-with-a-dash.key
-          en.missing-key-question?.key
-          en.fn_comment
-          en.only_in_es
-          en.events.show.success
-        )
+    let (:expected_missing_keys_in_source) {
+      %w(
+        used_but_missing.key
+        relative.index.missing
+        hash.pattern_missing.a
+        hash.pattern_missing.b
+        missing_symbol_key
+        missing_symbol.key_two
+        missing_symbol.key_three
+        missing-key-with-a-dash.key
+        missing-key-question?.key
+        fn_comment
+        events.show.success
+        index.my_custom_scanner.title
+        magic_comment
+        default_arg
+        .not_relative
+      )
+    }
+    let (:expected_missing_keys_diff) {
+      %w(
+        es.missing_in_es.a
+        en.present_in_es_but_not_en.a
+        es.missing_in_es_plural_1.a
+        es.missing_in_es_plural_2.a
+        en.only_in_es
+      )
     }
     it 'detects missing' do
-      es_keys = expected_missing_keys.grep(/^es\./)
-      expect(run_cmd 'missing').to be_i18n_keys expected_missing_keys
-      # locale argument
+      es_keys = expected_missing_keys_diff.grep(/^es\./) + expected_missing_keys_in_source.map { |k| "es.#{k}" }
+      out, result = run_cmd_capture_stdout_and_result 'missing'
+      expect(result).to eq :exit_1
+      expect(out).to be_i18n_keys(expected_missing_keys_diff +
+                                      expected_missing_keys_in_source.map { |k| "all.#{k}" })
       expect(run_cmd 'missing', '-les').to be_i18n_keys es_keys
       expect(run_cmd 'missing', 'es').to be_i18n_keys es_keys
     end
@@ -90,8 +109,10 @@ describe 'i18n-tasks' do
   end
 
   describe 'unused' do
-    it 'detects unused' do
-      expect(run_cmd 'unused').to be_i18n_keys expected_unused_keys
+    it 'detects unused (--no-strict)' do
+      out, result = run_cmd_capture_stdout_and_result('unused', '--no-strict')
+      expect(result).to eq :exit_1
+      expect(out).to be_i18n_keys expected_unused_keys
     end
 
     it 'detects unused (--strict)' do
@@ -156,14 +177,16 @@ describe 'i18n-tasks' do
   end
 
   describe 'add_missing' do
-    it 'default placeholder: key.humanize for base_locale' do
+    it 'default placeholder: default_or_value_or_human_key' do
       in_test_app_dir {
         expect(YAML.load_file('config/locales/en.yml')['en']['used_but_missing']).to be_nil
+        expect(YAML.load_file('config/locales/en.yml')['en']['default_arg']).to be_nil
       }
       run_cmd 'add-missing', 'base'
       in_test_app_dir {
         expect(YAML.load_file('config/locales/en.yml')['en']['used_but_missing']['key']).to eq 'Key'
         expect(YAML.load_file('config/locales/en.yml')['en']['present_in_es_but_not_en']['a']).to eq 'ES_TEXT'
+        expect(YAML.load_file('config/locales/en.yml')['en']['default_arg']).to eq 'Default Text'
       }
     end
 
@@ -199,6 +222,17 @@ describe 'i18n-tasks' do
       in_test_app_dir {
         expect(YAML.load_file('config/locales/es.yml')['es']['missing_in_es']['a']).to eq 'TRME EN_TEXT'
         expect(YAML.load_file('config/locales/en.yml')['en']['present_in_es_but_not_en']['a']).to eq 'TRME ES_TEXT'
+      }
+    end
+
+    it '--value with %{key}' do
+      in_test_app_dir {
+        expect(YAML.load_file('config/locales/es.yml')['es']['missing_in_es']).to be_nil
+      }
+      run_cmd 'add-missing', '-v', 'TRME %{key}'
+      in_test_app_dir {
+        expect(YAML.load_file('config/locales/es.yml')['es']['missing_in_es']['a']).to eq 'TRME es.missing_in_es.a'
+        expect(YAML.load_file('config/locales/en.yml')['en']['present_in_es_but_not_en']['a']).to eq 'TRME en.present_in_es_but_not_en.a'
       }
     end
   end

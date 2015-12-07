@@ -1,3 +1,37 @@
+## 0.9.2
+
+* Fix ActiveSupport >= 4.0 but < 4.2 compatibility. [#178](https://github.com/glebm/i18n-tasks/issues/178)
+* Locale file path rewriting now matches locales as directories and multiple instances of the locale in the path. [#176](https://github.com/glebm/i18n-tasks/issues/176) [#177](https://github.com/glebm/i18n-tasks/issues/177)
+
+## 0.9.1
+
+* New method: `I18n::Tasks.add_scanner(scanner_class_name, scanner_opts)` to add a scanner to the default configuration.
+* New method: `I18n::Tasks.add_commands(commands_module)` to add commands to `i18n-tasks`.
+* Only match `I18n` or `nil` receivers in PatternScanner.
+
+## 0.9.0
+
+* Support for multiple scanners.
+* AST scanner for `.rb` files.
+* `default:` argument support for `add-missing -v`. AST scanner only.  [#55](https://github.com/glebm/i18n-tasks/issues/55)
+* Recognize that only `t` calls can use relative keys, not `I18n.t`. AST scanner only. [#106](https://github.com/glebm/i18n-tasks/issues/106) 
+* Strict mode enabled by default, can be configured via `search.strict`. New argument: `--no-strict`.
+* `search.include` renamed to `search.only`.
+
+## 0.8.7
+
+* New interpolation value for `add-missing -v`: `%{key}`. [Stijn Mathysen](https://github.com/stijnster) [#164](https://github.com/glebm/i18n-tasks/pull/164)
+* When adding keys from non-default locales, merge base locale first, then the others. [#162](https://github.com/glebm/i18n-tasks/issues/162)
+
+## 0.8.6
+
+* Report missing keys found in source in all the locales. [#162](https://github.com/glebm/i18n-tasks/issues/162)
+* Fix `data-remove` task. [#140](https://github.com/glebm/i18n-tasks/issues/140)
+* Non-zero exit code on `health`, `missing`, and `unused` if such keys are present. [#151](https://github.com/glebm/i18n-tasks/issues/151)
+* XLSX report compatibility with the OSX Numbers App. [#159](https://github.com/glebm/i18n-tasks/issues/159)
+* RSpec template compatibility with `config.expose_dsl_globally = false`. [#148](https://github.com/glebm/i18n-tasks/issues/148)
+* `bundle show vagrant` example in the config template is no longer interpolated .[#161](https://github.com/glebm/i18n-tasks/issues/161)
+
 ## 0.8.5
 
 * Fix regression: Plugin support [#153](https://github.com/glebm/i18n-tasks/issues/153).

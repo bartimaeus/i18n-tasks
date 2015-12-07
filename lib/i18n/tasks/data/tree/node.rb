@@ -1,4 +1,3 @@
-# coding: utf-8
 
 require 'i18n/tasks/data/tree/traversal'
 require 'i18n/tasks/data/tree/siblings'
@@ -10,13 +9,13 @@ module I18n::Tasks::Data::Tree
     attr_accessor :value
     attr_reader :key, :children, :parent
 
-    def initialize(opts = {})
-      @key          = opts[:key]
+    def initialize(key:, value: nil, data: nil, parent: nil, children: nil)
+      @key          = key
       @key = @key.to_s.freeze if @key
-      @value        = opts[:value]
-      @data         = opts[:data]
-      @parent       = opts[:parent]
-      self.children = (opts[:children] if opts[:children])
+      @value        = value
+      @data         = data
+      @parent       = parent
+      self.children = (children if children)
     end
 
     def attributes
@@ -63,7 +62,7 @@ module I18n::Tasks::Data::Tree
     end
 
     def children?
-      children && children.any?
+      children && !children.empty?
     end
 
     def data
@@ -118,6 +117,13 @@ module I18n::Tasks::Data::Tree
         visitor.yield node
       end
     end
+
+    def set(full_key, node)
+      (@children ||= Siblings.new(parent: self)).set(full_key, node)
+      dirty!
+      node
+    end
+    alias []= set
 
     def to_nodes
       Nodes.new([self])

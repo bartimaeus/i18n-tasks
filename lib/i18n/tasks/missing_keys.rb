@@ -1,4 +1,4 @@
-# coding: utf-8
+require 'set'
 module I18n::Tasks
   module MissingKeys
 
@@ -15,12 +15,12 @@ module I18n::Tasks
       MissingKeys.missing_keys_types
     end
 
-    # @param [:missing_used, :missing_diff] types (default nil)
+    # @param types [:missing_used, :missing_diff] all if `nil`.
     # @return [Siblings]
-    def missing_keys(opts = {})
-      locales = opts[:locales].presence || self.locales
-      types   = opts[:types].presence || missing_keys_types
-      base    = opts[:base_locale] || base_locale
+    def missing_keys(locales: nil, types: nil, base_locale: nil)
+      locales = locales.presence || self.locales
+      types   = types.presence || missing_keys_types
+      base    = base_locale || self.base_locale
       types.inject(empty_forest) do |f, type|
         f.merge! send(:"missing_#{type}_forest", locales, base)
       end
@@ -48,20 +48,10 @@ module I18n::Tasks
       tree
     end
 
-    def missing_used_forest(locales, base = base_locale)
-      if locales.include?(base)
-        missing_used_tree(base)
-      else
-        empty_forest
-      end
-    end
-
-    def missing_tree(locale, compared_to)
-      if locale == compared_to
-        missing_used_tree locale
-      else
-        missing_diff_tree locale, compared_to
-      end
+    def missing_used_forest(locales, _base = base_locale)
+      locales.inject(empty_forest) { |forest, locale|
+        forest.merge! missing_used_tree(locale)
+      }
     end
 
     # keys present in compared_to, but not in locale
@@ -95,6 +85,33 @@ module I18n::Tasks
 
     def locale_key_missing?(locale, key)
       !key_value?(key, locale) && !ignore_key?(key, :missing)
+    end
+
+    # @param [::I18n::Tasks::Data::Tree::Siblings] forest
+    def collapse_missing_used_locales!(forest)
+      locales_and_nodes_by_key = {}
+      to_remove                = []
+      forest.each do |root|
+        locale = root.key
+        root.leaves { |node|
+          if node.data[:type] == :missing_used
+            (locales_and_nodes_by_key[node.full_key(root: false)] ||= []) << [locale, node]
+            to_remove << node
+          end
+        }
+      end
+      forest.remove_nodes_collapsing_emptied_ancestors! to_remove
+      keys_and_nodes_by_locale = {}
+      locales_and_nodes_by_key.each { |key, locales_and_nodes|
+        locales = locales_and_nodes.map(&:first).sort.join('+')
+        (keys_and_nodes_by_locale[locales] ||= []) << [key, locales_and_nodes[0][1]]
+      }
+      keys_and_nodes_by_locale.map { |locales, keys_nodes|
+        keys_nodes.each { |(key, node)|
+          forest["#{locales}.#{key}"] = node
+        }
+      }
+      forest
     end
   end
 end

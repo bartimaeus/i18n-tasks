@@ -1,4 +1,3 @@
-# coding: utf-8
 require 'easy_translate'
 require 'i18n/tasks/html_keys'
 
@@ -54,8 +53,8 @@ module I18n::Tasks
       list.map { |l| dump_value l[1] }.flatten.compact
     end
 
-    # @param [Array<[String, Object]>] list of key-value pairs
-    # @param [Array<String>] list of translated values
+    # @param [Array<[String, Object]>] list
+    # @param [Array<String>] translated_values
     # @return [Array<[String, Object]>] translated key-value pairs
     def from_values(list, translated_values)
       keys                = list.map(&:first)

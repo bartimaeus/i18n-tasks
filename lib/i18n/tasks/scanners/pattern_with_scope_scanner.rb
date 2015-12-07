@@ -1,4 +1,3 @@
-# coding: utf-8
 require 'i18n/tasks/scanners/pattern_scanner'
 
 module I18n::Tasks::Scanners
@@ -7,14 +6,14 @@ module I18n::Tasks::Scanners
   # Caveat: scope is only detected when it is the first argument
   class PatternWithScopeScanner < PatternScanner
 
+    protected
+
     def default_pattern
       # capture the first argument and scope argument if present
       /#{super}
       (?: \s*,\s* #{scope_arg_re} )? (?# capture scope in second argument )
       /x
     end
-
-    protected
 
     # Given
     # @param [MatchData] match
@@ -24,13 +23,12 @@ module I18n::Tasks::Scanners
       key   = super
       scope = match[1]
       if scope
-        scope_ns = scope.gsub(/[\[\]\s]+/, '').split(',').map { |arg| strip_literal(arg) } * '.'
+        scope_ns = scope.gsub(/[\[\]\s]+/, ''.freeze).split(','.freeze).map { |arg| strip_literal(arg) } * '.'.freeze
         "#{scope_ns}.#{key}"
       else
         key unless match[0] =~ /\A\w/
       end
     end
-
 
     # also parse expressions with literals
     def literal_re
@@ -46,18 +44,12 @@ module I18n::Tasks::Scanners
       end
     end
 
-    # Regexps:
-
     # scope: literal or code expression or an array of these
     def scope_arg_re
       /(?:
-         :#{scope_arg_name}\s*=>\s* | (?# :scope => :home )
-         #{scope_arg_name}:\s*        (?#    scope: :home )
+         :scope\s*=>\s* | (?# :scope => :home )
+         scope:\s*        (?#    scope: :home )
         ) (#{array_or_one_literal_re})/x
-    end
-
-    def scope_arg_name
-      'scope'
     end
 
     # match code expression

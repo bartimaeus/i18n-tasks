@@ -1,49 +1,47 @@
-# coding: utf-8
 require 'spec_helper'
 
-describe 'Pattern Scanner' do
-  describe 'scan_file' do
+RSpec.describe 'PatternScanner' do
+  describe '#keys' do
+    let(:expected_key) {
+      'events.show.success'
+    }
+
+    let(:expected_occurrence) {
+      {path:     'spec/fixtures/app/controllers/events_controller.rb',
+       pos:      769,
+       line_num: 33,
+       line_pos: 5,
+       line:     '    t(".success")'}
+    }
+
     it 'returns absolute keys from controllers' do
       file_path = 'spec/fixtures/app/controllers/events_controller.rb'
-      scanner = I18n::Tasks::Scanners::PatternScanner.new
+      scanner   = I18n::Tasks::Scanners::PatternScanner.new(
+          config: {paths: ['spec/fixtures/'], only: [file_path], relative_roots: ['spec/fixtures/app/controllers']})
       allow(scanner).to receive(:relative_roots).and_return(['spec/fixtures/app/controllers'])
-
-      keys = scanner.scan_file(file_path)
-
-      expect(keys).to include(
-        ["events.show.success",
-         {:data=>
-          {
-            :src_path=>"spec/fixtures/app/controllers/events_controller.rb",
-            :pos=>790,
-            :line_num=>34,
-            :line_pos=>10,
-            :line =>"    I18n.t(\".success\")"}
-           }
-         ]
-      )
+      expect(scanner.keys.detect { |key_occurrences| key_occurrences.key =~ /success/ }).to(
+          eq make_key_occurrences(expected_key, [expected_occurrence]))
     end
   end
 
   describe 'default_pattern' do
-    let!(:pattern) { I18n::Tasks::Scanners::PatternScanner.new.default_pattern }
+    let!(:pattern) { I18n::Tasks::Scanners::PatternScanner.new.send(:default_pattern) }
 
-    [
-      't(".a.b")',
-      't "a.b"',
-      "t 'a.b'",
-      't("a.b")',
-      "t('a.b')",
-      "t('a.b', :arg => val)",
-      "t('a.b', arg: val)",
-      "t :a_b",
-      "t :'a.b'",
-      't :"a.b"',
-      "t(:ab)",
-      "t(:'a.b')",
-      't(:"a.b")',
-      'I18n.t("a.b")',
-      'I18n.translate("a.b")'
+    ['t(".a.b")',
+     't "a.b"',
+     "t 'a.b'",
+     't("a.b")',
+     "t('a.b')",
+     "t('a.b', :arg => val)",
+     "t('a.b', arg: val)",
+     "t :a_b",
+     "t :'a.b'",
+     't :"a.b"',
+     "t(:ab)",
+     "t(:'a.b')",
+     't(:"a.b")',
+     'I18n.t("a.b")',
+     'I18n.translate("a.b")'
     ].each do |string|
       it "matches #{string}" do
         expect(pattern).to match string

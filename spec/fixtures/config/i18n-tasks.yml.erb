@@ -1,15 +1,11 @@
 <% require './lib/test_i18n_plugin'
-   ::I18n::Tasks::Commands.send :include, TestI18nPlugin %>
+   require './lib/my_custom_scanner' %>
 
 base_locale: en
 locales: [es]
 
 # i18n data storage
 data:
-  # The default file adapter supports YAML and JSON files. You can provide a class name here.
-  adapter: file_system
-  #router: pattern_router
-  # adapter options
   read:
     - 'config/locales/%{locale}.yml'
     - 'config/locales/*.%{locale}.yml'
@@ -29,7 +25,7 @@ search:
     - 'app/'
     - 'vendor/'
   # include only files matching this glob pattern (default: blank = include all files)
-  include:
+  only:
     - '*.rb'
     - '*.html.*'
     - '*.file'

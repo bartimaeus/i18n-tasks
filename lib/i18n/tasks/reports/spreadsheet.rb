@@ -1,4 +1,3 @@
-# coding: utf-8
 require 'i18n/tasks/reports/base'
 require 'fileutils'
 
@@ -8,6 +7,7 @@ module I18n::Tasks::Reports
     def save_report(path, opts)
       path = path.presence || 'tmp/i18n-report.xlsx'
       p = Axlsx::Package.new
+      p.use_shared_strings = true # see #159
       add_missing_sheet p.workbook
       add_unused_sheet p.workbook
       add_eq_base_sheet p.workbook
@@ -19,17 +19,19 @@ module I18n::Tasks::Reports
     private
 
     def add_missing_sheet(wb)
-      tree = task.missing_keys
+      forest = task.missing_keys
+      forest = task.collapse_plural_nodes!(forest)
+      forest = task.collapse_missing_used_locales!(forest)
       wb.styles do |s|
         type_cell = s.add_style :alignment => {:horizontal => :center}
         locale_cell  = s.add_style :alignment => {:horizontal => :center}
         regular_style = s.add_style
-        wb.add_worksheet(name: missing_title(tree)) { |sheet|
+        wb.add_worksheet(name: missing_title(forest)) { |sheet|
           sheet.page_setup.fit_to :width => 1
           sheet.add_row [I18n.t('i18n_tasks.common.type'), I18n.t('i18n_tasks.common.locale'), I18n.t('i18n_tasks.common.key'), I18n.t('i18n_tasks.common.base_value')]
           style_header sheet
-          tree.keys do |key, node|
-            locale, type = node.root.data[:locale], node.data[:type]
+          forest.keys do |key, node|
+            locale, type = format_locale(node.root.data[:locale]), node.data[:type]
             sheet.add_row [missing_type_info(type)[:summary], locale, key, task.t(key)],
             styles: [type_cell, locale_cell, regular_style, regular_style]
           end

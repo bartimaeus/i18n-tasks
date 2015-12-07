@@ -1,4 +1,3 @@
-# coding: utf-8
 require 'fileutils'
 require 'yaml'
 require_relative 'capture_std'
@@ -20,6 +19,14 @@ module TestCodebase
     capture_stdout { capture_stderr { in_test_app_dir {
       run_cli(name, *args)
     } } }
+  end
+
+  def run_cmd_capture_stdout_and_result(name, *args)
+    result = nil
+    out = capture_stdout { capture_stderr { in_test_app_dir {
+      result = run_cli(name, *args)
+    } } }
+    [out, result]
   end
 
   def run_cmd_capture_stderr(name, *args)

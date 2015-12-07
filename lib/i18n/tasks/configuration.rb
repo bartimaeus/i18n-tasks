@@ -1,5 +1,11 @@
-# coding: utf-8
 module I18n::Tasks::Configuration
+  DEFAULTS = {
+      base_locale:     'en'.freeze,
+      internal_locale: 'en'.freeze,
+      search:          ::I18n::Tasks::UsedKeys::SEARCH_DEFAULTS,
+      data:            ::I18n::Tasks::Data::DATA_DEFAULTS
+  }
+
   # i18n-tasks config (defaults + config/i18n-tasks.yml)
   # @return [Hash{String => String,Hash,Array}]
   def config
@@ -12,7 +18,7 @@ module I18n::Tasks::Configuration
   )
 
   def file_config
-    file = CONFIG_FILES.detect { |f| File.exist?(f) }
+    file   = CONFIG_FILES.detect { |f| File.exist?(f) }
     config = file && YAML.load(Erubis::Eruby.new(File.read(file, encoding: 'UTF-8')).result)
     if config.present?
       config.with_indifferent_access.tap do |c|
@@ -33,7 +39,7 @@ module I18n::Tasks::Configuration
   end
 
   # data config
-  #  @return [{adapter: String, options: Hash}]
+  #  @return [Hash<adapter: String, options: Hash>]
   def data_config
     @config_sections[:data] ||= begin
       {
@@ -53,13 +59,6 @@ module I18n::Tasks::Configuration
     end
   end
 
-  def search_config
-    @config_sections[:search] ||= {
-        scanner: scanner.class.name,
-        config:  scanner.config
-    }
-  end
-
   # @return [Array<String>] all available locales, base_locale is always first
   def locales
     @config_sections[:locales] ||= data.locales
@@ -67,15 +66,15 @@ module I18n::Tasks::Configuration
 
   # @return [String] default i18n locale
   def base_locale
-    @config_sections[:base_locale] ||= (config[:base_locale] || 'en').to_s
+    @config_sections[:base_locale] ||= (config[:base_locale] || DEFAULTS[:base_locale]).to_s
   end
 
   def internal_locale
-    @config_sections[:internal_locale] ||= (config[:internal_locale] || 'en').to_s
+    @config_sections[:internal_locale] ||= (config[:internal_locale] || DEFAULTS[:internal_locale]).to_s
   end
 
   def ignore_config(type = nil)
-    key = type ? "ignore_#{type}" : 'ignore'
+    key                   = type ? "ignore_#{type}" : 'ignore'
     @config_sections[key] ||= config[key]
   end
 
@@ -87,7 +86,7 @@ module I18n::Tasks::Configuration
     internal_locale
     locales
     data_config
-    search_config
+    @config_sections[:search] ||= search_config
     translation_config
     IGNORE_TYPES.each do |ignore_type|
       ignore_config ignore_type

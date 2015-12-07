@@ -1,4 +1,3 @@
-# coding: utf-8
 module I18n::Tasks::Reports
   class Base
     include I18n::Tasks::Logging
@@ -31,7 +30,7 @@ module I18n::Tasks::Reports
     def used_title(used_tree)
       leaves = used_tree.leaves.to_a
       filter = used_tree.first.root.data[:key_filter]
-      used_n = leaves.map { |node| node.data[:source_occurrences].size }.reduce(:+).to_i
+      used_n = leaves.map { |node| node.data[:occurrences].size }.reduce(:+).to_i
       "#{leaves.length} key#{'s' if leaves.size != 1}#{" matching '#{filter}'" if filter}#{" (#{used_n} usage#{'s' if used_n != 1})" if used_n > 0}"
     end
 
@@ -50,6 +49,15 @@ module I18n::Tasks::Reports
       forest.keys(root: false).map { |key, node|
         {key: key, value: node.value, type: node.data[:type], locale: node.root.key, data: node.data}
       }
+    end
+
+    def format_locale(locale)
+      return '' unless locale
+      if locale.split('+') == task.locales.sort
+        'all'
+      else
+        locale.tr '+', ' '
+      end
     end
   end
 end
