@@ -1,3 +1,5 @@
+require 'strscan'
+
 module I18n::Tasks::KeyPatternMatching
   extend self
   MATCH_NOTHING = /\z\A/.freeze
@@ -28,22 +30,5 @@ module I18n::Tasks::KeyPatternMatching
         gsub(/\*/, '.*'.freeze).
         gsub(/:/, '(?<=^|\.)[^.]+?(?=\.|$)'.freeze).
         gsub(/\{(.*?)}/) { "(#{$1.strip.gsub /\s*,\s*/, '|'.freeze})" }
-  end
-
-  def key_match_pattern(k)
-    @key_match_pattern ||= {}
-    @key_match_pattern[k] ||= begin
-      "#{k.gsub(KEY_INTERPOLATION_RE, ':'.freeze)}#{':'.freeze if k.end_with?('.'.freeze)}"
-    end
-  end
-
-  # @return true if the key looks like an expression
-  KEY_INTERPOLATION_RE = /(?:\#{.*?}|\*+|\:+)/.freeze
-  def key_expression?(k)
-    @key_is_expr ||= {}
-    if @key_is_expr[k].nil?
-      @key_is_expr[k] = (k =~ KEY_INTERPOLATION_RE || k.end_with?('.'.freeze))
-    end
-    @key_is_expr[k]
   end
 end
