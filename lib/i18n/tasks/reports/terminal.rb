@@ -1,3 +1,4 @@
+# frozen_string_literal: true
 require 'i18n/tasks/reports/base'
 require 'terminal-table'
 module I18n
@@ -7,15 +8,16 @@ module I18n
         include Term::ANSIColor
 
         def missing_keys(forest = task.missing_keys)
-          forest = task.collapse_plural_nodes!(forest)
-          forest = task.collapse_missing_used_locales!(forest)
+          forest = collapse_missing_tree! forest
           if forest.present?
             print_title missing_title(forest)
             print_table headings: [cyan(bold(I18n.t('i18n_tasks.common.locale'))),
                                    cyan(bold I18n.t('i18n_tasks.common.key')),
                                    I18n.t('i18n_tasks.missing.details_title')] do |t|
               t.rows = sort_by_attr!(forest_to_attr(forest)).map do |a|
-                [{value: cyan(format_locale(a[:locale])), alignment: :center}, cyan(a[:key]), missing_key_info(a)]
+                [{value: cyan(format_locale(a[:locale])), alignment: :center},
+                 format_key(a[:key], a[:data]),
+                 missing_key_info(a)]
               end
             end
           else
@@ -29,8 +31,12 @@ module I18n
         end
 
         def used_keys(used_tree = task.used_tree)
-          print_title used_title(used_tree)
-          keys_nodes = used_tree.keys.to_a
+          # For the used tree we may have usage nodes that are not leaves as references.
+          keys_nodes = used_tree.nodes.select { |node| !!node.data[:occurrences] }.map { |node|
+            [node.full_key(root: false), node]
+          }
+          print_title used_title(keys_nodes, used_tree.first.root.data[:key_filter])
+          # Group multiple nodes
           if keys_nodes.present?
             keys_nodes.sort! { |a, b| a[0] <=> b[0] }.each do |key, node|
               print_occurrences node, key
@@ -41,27 +47,27 @@ module I18n
         end
 
         def unused_keys(tree = task.unused_keys)
-          keys = tree.root_key_values(true)
+          keys = tree.root_key_value_data(true)
           if keys.present?
             print_title unused_title(keys)
-            print_locale_key_value_table keys
+            print_locale_key_value_data_table keys
           else
             print_success I18n.t('i18n_tasks.unused.none')
           end
         end
 
         def eq_base_keys(tree = task.eq_base_keys)
-          keys = tree.root_key_values(true)
+          keys = tree.root_key_value_data(true)
           if keys.present?
             print_title eq_base_title(keys)
-            print_locale_key_value_table keys
+            print_locale_key_value_data_table keys
           else
             print_info cyan('No translations are the same as base value')
           end
         end
 
         def show_tree(tree)
-          print_locale_key_value_table tree.root_key_values(true)
+          print_locale_key_value_data_table tree.root_key_value_data(true)
         end
 
         def forest_stats(forest, stats = task.forest_stats(forest))
@@ -80,25 +86,55 @@ module I18n
           if leaf[:type] == :missing_used
             first_occurrence leaf
           else
-            "#{cyan leaf[:data][:missing_diff_locale]} #{leaf[:value].to_s.strip}"
+            "#{cyan leaf[:data][:missing_diff_locale]} #{format_value(leaf[:value].is_a?(String) ? leaf[:value].strip : leaf[:value])}"
           end
+        end
+
+        def format_key(key, data)
+          if data[:ref_info]
+            from, to = data[:ref_info]
+            resolved = key[0...to.length]
+            after    = key[to.length..-1]
+            "  #{yellow from}#{cyan after}\n#{bold(yellow('⮕'))} #{bold yellow resolved}"
+          else
+            cyan(key)
+          end
+        end
+
+        def format_value(val)
+          val.is_a?(Symbol) ? "#{bold(yellow('⮕ '))}#{yellow(val.to_s)}" : val.to_s.strip
+        end
+
+        def format_reference_desc(node_data)
+            return nil unless node_data
+            case node_data[:ref_type]
+              when :reference_usage
+                bold(yellow('(ref)'))
+              when :reference_usage_resolved
+                bold(yellow('(resolved ref)'))
+              when :reference_usage_key
+                bold(yellow('(ref key)'))
+            end
         end
 
         def print_occurrences(node, full_key = node.full_key)
           occurrences = node.data[:occurrences]
-          puts "#{bold "#{full_key}"} #{green(occurrences.size.to_s) if occurrences.size > 1}"
+          puts [bold("#{full_key}"),
+                format_reference_desc(node.data),
+                (green(occurrences.size.to_s) if occurrences.size > 1)
+               ].compact.join ' '
           occurrences.each do |occurrence|
             puts "  #{key_occurrence full_key, occurrence}"
           end
         end
 
-        def print_locale_key_value_table(locale_key_values)
-          if locale_key_values.present?
+        def print_locale_key_value_data_table(locale_key_value_datas)
+          if locale_key_value_datas.present?
             print_table headings: [bold(cyan(I18n.t('i18n_tasks.common.locale'))),
                                    bold(cyan(I18n.t('i18n_tasks.common.key'))),
                                    I18n.t('i18n_tasks.common.value')] do |t|
-              t.rows = locale_key_values.map { |(locale, k, v)|
-                [{value: cyan(locale), alignment: :center}, cyan(k), v.to_s]
+              t.rows = locale_key_value_datas.map { |(locale, k, v, data)|
+                [{value: cyan(locale), alignment: :center}, format_key(k, data), format_value(v)]
               }
             end
           else
@@ -133,7 +169,7 @@ module I18n
 
         def key_occurrence(full_key, occurrence)
           location = green "#{occurrence.path}:#{occurrence.line_num}"
-          source   = highlight_key(full_key, occurrence.line, occurrence.line_pos..-1).strip
+          source   = highlight_key(occurrence.raw_key || full_key, occurrence.line, occurrence.line_pos..-1).strip
           "#{location} #{source}"
         end
 

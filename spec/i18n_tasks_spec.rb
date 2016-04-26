@@ -1,3 +1,4 @@
+# frozen_string_literal: true
 require 'spec_helper'
 require 'fileutils'
 require 'open3'
@@ -13,11 +14,12 @@ RSpec.describe 'i18n-tasks' do
       # These bin/i18n-tasks tests are executed in parallel for performance
       env = {'I18N_TASKS_BIN_SIMPLECOV_COVERAGE' => '1'}
       in_test_app_dir do
+        clean_parser_warning = -> s { s.sub %r(\Awarning: parser/current.*?https://github.com/whitequark/parser#compatibility-with-ruby-mri.\n)m, '' }
         clean_coverage_logging = -> s { s.sub /(?:\n^|\A)(?:Coverage = |.*Reporting coverage).*(?:$\n|\z)/i, '' }
         [
             proc {
               out, err, status = Open3.capture3(env, 'bundle exec ../../bin/i18n-tasks')
-              out, err = clean_coverage_logging[out], clean_coverage_logging[err]
+              out, err = clean_coverage_logging[out], clean_parser_warning[clean_coverage_logging[err]]
               expect(status).to be_success
               expect(out).to be_empty
               expect(err).to start_with('Usage: i18n-tasks [command] [options]')
@@ -27,7 +29,7 @@ RSpec.describe 'i18n-tasks' do
             },
             proc {
               out, err, status = Open3.capture3(env, 'bundle exec ../../bin/i18n-tasks --version')
-              out, err = clean_coverage_logging[out], clean_coverage_logging[err]
+              out, err = clean_coverage_logging[out], clean_parser_warning[clean_coverage_logging[err]]
               expect(status).to be_success
               expect(err).to be_empty
               expect(out.chomp).to eq I18n::Tasks::VERSION
@@ -68,7 +70,8 @@ RSpec.describe 'i18n-tasks' do
         magic_comment
         default_arg
         .not_relative
-      )
+        reference-missing-target.a
+      ) + ['⮕ missing_target']
     }
     let (:expected_missing_keys_diff) {
       %w(
@@ -80,11 +83,12 @@ RSpec.describe 'i18n-tasks' do
       )
     }
     it 'detects missing' do
-      es_keys = expected_missing_keys_diff.grep(/^es\./) + expected_missing_keys_in_source.map { |k| "es.#{k}" }
+      es_keys = expected_missing_keys_diff.grep(/^es\./) +
+          expected_missing_keys_in_source.map { |k| k[0] != '⮕' ? "es.#{k}" : k }
       out, result = run_cmd_capture_stdout_and_result 'missing'
       expect(result).to eq :exit_1
       expect(out).to be_i18n_keys(expected_missing_keys_diff +
-                                      expected_missing_keys_in_source.map { |k| "all.#{k}" })
+                                      expected_missing_keys_in_source.map { |k| k[0] != '⮕' ? "all.#{k}" : k } )
       expect(run_cmd 'missing', '-les').to be_i18n_keys es_keys
       expect(run_cmd 'missing', 'es').to be_i18n_keys es_keys
     end
@@ -97,7 +101,7 @@ RSpec.describe 'i18n-tasks' do
   end
 
   let(:expected_unused_keys) do
-    %w(unused.a unused.numeric unused.plural).map do |k|
+    %w(unused.a unused.numeric unused.plural reference-unused reference-unused-target).map do |k|
       %w(en es).map { |l| "#{l}.#{k}" }
     end.reduce(:+)
   end
@@ -254,6 +258,26 @@ used.a 2
   app/views/usages.html.slim:2 b = t 'used.a'
       TXT
     end
+
+    it 'finds references' do
+      result = Term::ANSIColor.uncolor(run_cmd 'find', 'reference*')
+      expect(result).to eq(<<-TXT)
+missing_target.a (resolved ref)
+  app/views/index.html.slim:36 = t 'reference-missing-target.a'
+reference-missing-target (ref key)
+  app/views/index.html.slim:36 = t 'reference-missing-target.a'
+reference-missing-target.a (ref)
+  app/views/index.html.slim:36 = t 'reference-missing-target.a'
+reference-ok-nested (ref key)
+  app/views/index.html.slim:35 = t 'reference-ok-nested.a'
+reference-ok-nested.a (ref)
+  app/views/index.html.slim:35 = t 'reference-ok-nested.a'
+reference-ok-plain (ref key)
+  app/views/index.html.slim:34 = t 'reference-ok-plain'
+resolved_reference_target.a (resolved ref)
+  app/views/index.html.slim:35 = t 'reference-ok-nested.a'
+      TXT
+    end
   end
 
   # --- setup ---
@@ -292,7 +316,13 @@ used.a 2
           'very'                   => {'scoped' => {'x' => v}},
           'used'                   => {'a' => v},
           'latin_extra'            => {'çüéö' => v},
-          'not_a_comment'          => v
+          'not_a_comment'          => v,
+          'reference-ok-plain'        => :'resolved_reference_target.a',
+          'reference-ok-nested'       => :resolved_reference_target,
+          'reference-unused'          => :'resolved_reference_target.a',
+          'reference-unused-target'   => :'unused.a',
+          'reference-missing-target'  => :missing_target,
+          'resolved_reference_target' => {'a' => v}
       }.tap { |r|
         if BENCH_KEYS > 0
           gen = r['bench'] = {}

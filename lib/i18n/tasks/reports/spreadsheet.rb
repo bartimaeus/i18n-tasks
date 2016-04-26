@@ -1,3 +1,4 @@
+# frozen_string_literal: true
 require 'i18n/tasks/reports/base'
 require 'fileutils'
 
@@ -19,9 +20,7 @@ module I18n::Tasks::Reports
     private
 
     def add_missing_sheet(wb)
-      forest = task.missing_keys
-      forest = task.collapse_plural_nodes!(forest)
-      forest = task.collapse_missing_used_locales!(forest)
+      forest = collapse_missing_tree! task.missing_keys
       wb.styles do |s|
         type_cell = s.add_style :alignment => {:horizontal => :center}
         locale_cell  = s.add_style :alignment => {:horizontal => :center}

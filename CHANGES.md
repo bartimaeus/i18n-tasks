@@ -1,3 +1,18 @@
+## 0.9.5
+
+* Add a `PatternMapper` scanner for mapping bits of code to keys [#191](https://github.com/glebm/i18n-tasks/issues/191).
+* Add missing keys with `nil` value by passing `--nil-value` to `add-missing`. [#170](https://github.com/glebm/i18n-tasks/issues/170)
+* Requiring `i18n-tasks` no longer overrides `I18n.locale`. [#190](https://github.com/glebm/i18n-tasks/issues/190).
+
+## 0.9.4
+
+* Improve reporting for reference keys throughout.
+
+## 0.9.3
+
+* Support i18n `:symbol` reference keys. [#150](https://github.com/glebm/i18n-tasks/issues/150)
+* Fixes dynamic key matching issue with nested `#{}`. [#180](https://github.com/glebm/i18n-tasks/issues/180)
+
 ## 0.9.2
 
 * Fix ActiveSupport >= 4.0 but < 4.2 compatibility. [#178](https://github.com/glebm/i18n-tasks/issues/178)

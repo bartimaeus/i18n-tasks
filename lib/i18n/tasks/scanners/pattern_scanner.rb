@@ -1,12 +1,15 @@
+# frozen_string_literal: true
 require 'i18n/tasks/scanners/file_scanner'
 require 'i18n/tasks/scanners/relative_keys'
 require 'i18n/tasks/scanners/occurrence_from_position'
+require 'i18n/tasks/scanners/ruby_key_literals'
 
 module I18n::Tasks::Scanners
   # Scan for I18n.t usages using a simple regular expression.
   class PatternScanner < FileScanner
     include RelativeKeys
     include OccurrenceFromPosition
+    include RubyKeyLiterals
 
     def initialize(**args)
       super
@@ -17,13 +20,13 @@ module I18n::Tasks::Scanners
     protected
 
     # Extract i18n keys from file based on the pattern which must capture the key literal.
-    # @return [Array<[key, Results::KeyOccurrence]>] each occurrence found in the file
+    # @return [Array<[key, Results::Occurrence]>] each occurrence found in the file
     def scan_file(path)
       keys = []
       text = read_file(path)
       text.scan(@pattern) do |match|
         src_pos  = Regexp.last_match.offset(0).first
-        location = occurrence_from_position(path, text, src_pos)
+        location = occurrence_from_position(path, text, src_pos, raw_key: strip_literal(match[0]))
         next if exclude_line?(location.line, path)
         key = match_to_key(match, path, location)
         next unless key
@@ -49,26 +52,13 @@ module I18n::Tasks::Scanners
       re && re =~ line
     end
 
-    # remove the leading colon and unwrap quotes from the key match
-    # @param literal [String] e.g: "key", 'key', or :key.
-    # @return [String] key
-    def strip_literal(literal)
-      key = literal
-      key = key[1..-1] if ':'.freeze == key[0]
-      key = key[1..-2] if QUOTES.include?(key[0])
-      key
-    end
-
-    QUOTES              = ["'".freeze, '"'.freeze].freeze
-    VALID_KEY_CHARS     = /(?:[[:word:]]|[-.?!;À-ž])/
-    VALID_KEY_RE_STRICT = /^#{VALID_KEY_CHARS}+$/
-    VALID_KEY_RE        = /^(#{VALID_KEY_CHARS}|[:\#{@}\[\]])+$/
+    VALID_KEY_RE_DYNAMIC = /^(#{VALID_KEY_CHARS}|[:\#{@}\[\]])+$/
 
     def valid_key?(key)
       if @config[:strict]
-        key =~ VALID_KEY_RE_STRICT && !key.end_with?('.')
+        super(key)
       else
-        key =~ VALID_KEY_RE
+        key =~ VALID_KEY_RE_DYNAMIC
       end
     end
 
@@ -84,13 +74,6 @@ module I18n::Tasks::Scanners
 
     def translate_call_re
       /(?<=^|[^\w'\-.]|[^\w'\-]I18n\.|I18n\.)t(?:ranslate)?/
-    end
-
-    # Match literals:
-    # * String: '', "#{}"
-    # * Symbol: :sym, :'', :"#{}"
-    def literal_re
-      /:?".+?"|:?'.+?'|:\w+/
     end
 
     def default_pattern

@@ -1,3 +1,4 @@
+# frozen_string_literal: true
 require 'spec_helper'
 
 RSpec.describe 'PatternScanner' do
@@ -11,7 +12,8 @@ RSpec.describe 'PatternScanner' do
        pos:      836,
        line_num: 32,
        line_pos: 5,
-       line:     '    t(".success")'}
+       line:     '    t(".success")',
+       raw_key:  '.success'}
     }
 
     it 'returns absolute keys from controllers' do

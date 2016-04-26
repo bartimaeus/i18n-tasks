@@ -1,3 +1,4 @@
+# frozen_string_literal: true
 require 'set'
 require 'i18n/tasks/split_key'
 require 'i18n/tasks/data/tree/nodes'
@@ -108,13 +109,12 @@ module I18n::Tasks::Data::Tree
       derive.append!(nodes)
     end
 
-    def merge!(nodes)
+    # @param on_leaves_merge [Proc] invoked when a leaf is merged with another leaf
+    def merge!(nodes, on_leaves_merge: nil)
       nodes = Siblings.from_nested_hash(nodes) if nodes.is_a?(Hash)
       nodes.each do |node|
-        merge_node! node
+        merge_node! node, on_leaves_merge: on_leaves_merge
       end
-      @list = key_to_node.values
-      dirty!
       self
     end
 
@@ -123,16 +123,19 @@ module I18n::Tasks::Data::Tree
     end
 
     def subtract_keys(keys)
-      to_remove = Set.new
-      keys.each do |full_key|
-        node = get full_key
-        to_remove << node if node
-      end
-      remove_nodes_collapsing_emptied_ancestors to_remove
+      remove_nodes_and_emptied_ancestors(keys.inject(Set.new) { |set, key| (node = get(key)) ? set << node : set })
+    end
+
+    def subtract_keys!(keys)
+      remove_nodes_and_emptied_ancestors!(keys.inject(Set.new) { |set, key| (node = get(key)) ? set << node : set })
     end
 
     def subtract_by_key(other)
       subtract_keys other.key_names(root: true)
+    end
+
+    def subtract_by_key!(other)
+      subtract_keys! other.key_names(root: true)
     end
 
     def set_root_key!(new_key, data = nil)
@@ -142,7 +145,8 @@ module I18n::Tasks::Data::Tree
       self
     end
 
-    def merge_node!(node)
+    # @param on_leaves_merge [Proc] invoked when a leaf is merged with another leaf
+    def merge_node!(node, on_leaves_merge: nil)
       if key_to_node.key?(node.key)
         our = key_to_node[node.key]
         return if our == node
@@ -155,26 +159,30 @@ module I18n::Tasks::Data::Tree
             warn_add_children_to_leaf our
             our.children = node.children
           end
+        elsif on_leaves_merge
+          on_leaves_merge.call(our, node)
         end
       else
-        key_to_node[node.key] = node.derive(parent: parent)
+        @list << (key_to_node[node.key] = node.derive(parent: parent))
+        dirty!
       end
     end
 
     # @param nodes [Enumerable] Modified in-place.
-    def remove_nodes_collapsing_emptied_ancestors(nodes)
+    def remove_nodes_and_emptied_ancestors(nodes)
       add_ancestors_that_only_contain_nodes! nodes
       select_nodes { |node| !nodes.include?(node) }
     end
 
     # @param nodes [Enumerable] Modified in-place.
-    def remove_nodes_collapsing_emptied_ancestors!(nodes)
+    def remove_nodes_and_emptied_ancestors!(nodes)
       add_ancestors_that_only_contain_nodes! nodes
       select_nodes! { |node| !nodes.include?(node) }
     end
 
     private
 
+    # Adds all the ancestors that only contain the given nodes as descendants to the given nodes.
     # @param nodes [Set] Modified in-place.
     def add_ancestors_that_only_contain_nodes!(nodes)
       levels.reverse_each do |level_nodes|

@@ -1,3 +1,4 @@
+# frozen_string_literal: true
 require 'i18n/tasks/cli'
 require 'i18n/tasks/reports/terminal'
 require 'i18n/tasks/reports/spreadsheet'
@@ -24,10 +25,6 @@ module I18n::Tasks
         else
           send name, opts
         end
-      end
-
-      def set_internal_locale!
-        I18n.locale = i18n.internal_locale
       end
 
       protected

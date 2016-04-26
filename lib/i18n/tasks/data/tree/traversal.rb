@@ -1,3 +1,4 @@
+# frozen_string_literal: true
 module I18n::Tasks
   module Data::Tree
     # Any Enumerable that yields nodes can mix in this module
@@ -74,6 +75,12 @@ module I18n::Tasks
         result
       end
 
+      def root_key_value_data(sort = false)
+        result = keys(root: false).map { |key, node| [node.root.key, key, node.value, node.data] }
+        result.sort! { |a, b| a[0] != b[0] ? a[0] <=> b[0] : a[1] <=> b[1] } if sort
+        result
+      end
+
       #-- modify / derive
 
       # Select the nodes for which the block returns true. Pre-order traversal.
@@ -145,6 +152,7 @@ module I18n::Tasks
       def set_each_value!(val_pattern, key_pattern = nil, &value_proc)
         value_proc ||= proc { |node|
           node_value = node.value
+          next node_value if node.reference?
           human_key  = ActiveSupport::Inflector.humanize(node.key.to_s)
           full_key   = node.full_key
           StringInterpolation.interpolate_soft(

@@ -1,3 +1,4 @@
+# frozen_string_literal: true
 require 'set'
 module I18n::Tasks
   module MissingKeys
@@ -79,7 +80,7 @@ module I18n::Tasks
       base = data[compare_to].first.children
       data[locale].select_keys(root: false) { |key, node|
         other_node = base[key]
-        other_node && node.value == other_node.value && !ignore_key?(key, :eq_base, locale)
+        other_node && !node.reference? && node.value == other_node.value && !ignore_key?(key, :eq_base, locale)
       }.set_root_key!(locale, type: :eq_base)
     end
 
@@ -88,25 +89,28 @@ module I18n::Tasks
     end
 
     # @param [::I18n::Tasks::Data::Tree::Siblings] forest
-    def collapse_missing_used_locales!(forest)
-      locales_and_nodes_by_key = {}
-      to_remove                = []
+    # @yield [::I18n::Tasks::Data::Tree::Node]
+    # @yieldreturn [Boolean] whether to collapse the node
+    def collapse_same_key_in_locales!(forest)
+      locales_and_node_by_key = {}
+      to_remove               = []
       forest.each do |root|
         locale = root.key
-        root.leaves { |node|
-          if node.data[:type] == :missing_used
-            (locales_and_nodes_by_key[node.full_key(root: false)] ||= []) << [locale, node]
-            to_remove << node
+        root.keys { |key, node|
+          next unless yield node
+          if locales_and_node_by_key.key?(key)
+            locales_and_node_by_key[key][0] << locale
+          else
+            locales_and_node_by_key[key] = [[locale], node]
           end
+          to_remove << node
         }
       end
-      forest.remove_nodes_collapsing_emptied_ancestors! to_remove
-      keys_and_nodes_by_locale = {}
-      locales_and_nodes_by_key.each { |key, locales_and_nodes|
-        locales = locales_and_nodes.map(&:first).sort.join('+')
-        (keys_and_nodes_by_locale[locales] ||= []) << [key, locales_and_nodes[0][1]]
-      }
-      keys_and_nodes_by_locale.map { |locales, keys_nodes|
+      forest.remove_nodes_and_emptied_ancestors! to_remove
+      locales_and_node_by_key.inject({}) { |inv, (key, (locales, node))|
+        (inv[locales.sort.join('+')] ||= []) << [key, node]
+        inv
+      }.map { |locales, keys_nodes|
         keys_nodes.each { |(key, node)|
           forest["#{locales}.#{key}"] = node
         }
