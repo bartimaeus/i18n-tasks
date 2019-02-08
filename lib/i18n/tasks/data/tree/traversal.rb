@@ -1,9 +1,11 @@
 # frozen_string_literal: true
+
+require 'set'
+
 module I18n::Tasks
   module Data::Tree
     # Any Enumerable that yields nodes can mix in this module
-    module Traversal
-
+    module Traversal # rubocop:disable Metrics/ModuleLength
       def nodes(&block)
         depth_first(&block)
       end
@@ -41,23 +43,22 @@ module I18n::Tasks
 
       def depth_first(&visitor)
         return to_enum(:depth_first) unless visitor
-        each { |node|
+        each do |node|
           visitor.yield node
+          next unless node.children?
           node.children.each do |child|
             child.depth_first(&visitor)
-          end if node.children?
-        }
+          end
+        end
         self
       end
 
       # @option root include root in full key
-      def keys(key_opts = {}, &visitor)
-        key_opts[:root] = false unless key_opts.key?(:root)
-        return to_enum(:keys, key_opts) unless visitor
-        leaves { |node| visitor.yield(node.full_key(key_opts), node) }
+      def keys(root: false, &visitor)
+        return to_enum(:keys, root: root) unless visitor
+        leaves { |node| visitor.yield(node.full_key(root: root), node) }
         self
       end
-
 
       def key_names(opts = {})
         opts[:root] = false unless opts.key?(:root)
@@ -88,12 +89,11 @@ module I18n::Tasks
       def select_nodes(&block)
         tree = Siblings.new
         each do |node|
-          if block.yield(node)
-            tree.append! node.derive(
-                             parent:   tree.parent,
-                             children: (node.children.select_nodes(&block).to_a if node.children)
-                         )
-          end
+          next unless block.yield(node)
+          tree.append! node.derive(
+            parent: tree.parent,
+            children: (node.children.select_nodes(&block).to_a if node.children)
+          )
         end
         tree
       end
@@ -104,7 +104,7 @@ module I18n::Tasks
         to_remove = []
         each do |node|
           if block.yield(node)
-            node.children.select_nodes!(&block) if node.children
+            node.children&.select_nodes!(&block)
           else
             # removing during each is unsafe
             to_remove << node
@@ -114,62 +114,71 @@ module I18n::Tasks
         self
       end
 
-      # @return Siblings
-      def select_keys(opts = {}, &block)
-        root = opts.key?(:root) ? opts[:root] : false
-        ok   = {}
-        keys(root: root) do |full_key, node|
-          if block.yield(full_key, node)
-            node.walk_to_root { |p|
-              break if ok[p]
-              ok[p] = true
-            }
-          end
+      # @return [Siblings]
+      def select_keys(root: false, &block)
+        matches = get_nodes_by_key_filter(root: root, &block)
+        select_nodes do |node|
+          matches.include?(node)
         end
-        select_nodes { |node|
-          ok[node]
-        }
       end
 
-      # @return Siblings
+      # @return [Siblings]
+      def select_keys!(root: false, &block)
+        matches = get_nodes_by_key_filter(root: root, &block)
+        select_nodes! do |node|
+          matches.include?(node)
+        end
+      end
+
+      # @return [Set<I18n::Tasks::Data::Tree::Node>]
+      def get_nodes_by_key_filter(root: false, &block)
+        matches = Set.new
+        keys(root: root) do |full_key, node|
+          if block.yield(full_key, node)
+            node.walk_to_root do |p|
+              break unless matches.add?(p)
+            end
+          end
+        end
+        matches
+      end
+
+      # @return [Siblings]
       def intersect_keys(other_tree, key_opts = {}, &block)
         if block
-          select_keys(key_opts) { |key, node|
+          select_keys(key_opts) do |key, node|
             other_node = other_tree[key]
-            other_node && block.call(key, node, other_node)
-          }
+            other_node && yield(key, node, other_node)
+          end
         else
-          select_keys(key_opts) { |key, node| other_tree[key] }
+          select_keys(key_opts) { |key, _node| other_tree[key] }
         end
       end
 
       def grep_keys(match, opts = {})
         select_keys(opts) do |full_key, _node|
-          match === full_key
+          match === full_key # rubocop:disable Style/CaseEquality
         end
       end
 
       def set_each_value!(val_pattern, key_pattern = nil, &value_proc)
-        value_proc ||= proc { |node|
+        value_proc ||= proc do |node|
           node_value = node.value
           next node_value if node.reference?
-          human_key  = ActiveSupport::Inflector.humanize(node.key.to_s)
-          full_key   = node.full_key
+          human_key = ActiveSupport::Inflector.humanize(node.key.to_s)
+          full_key = node.full_key
+          default = (node.data[:occurrences] || []).detect { |o| o.default_arg.presence }.try(:default_arg)
           StringInterpolation.interpolate_soft(
-              val_pattern,
-              value:                         node_value,
-              human_key:                     human_key,
-              key:                           full_key,
-              value_or_human_key:            node_value.presence || human_key,
-              value_or_default_or_human_key: node_value.presence ||
-                                                 (node.data[:occurrences] || []).detect { |o|
-                                                   o.default_arg.presence }.try(:default_arg) ||
-                                                 human_key
+            val_pattern,
+            value: node_value,
+            human_key: human_key,
+            key: full_key,
+            default: default,
+            value_or_human_key: node_value.presence || human_key,
+            value_or_default_or_human_key: node_value.presence || default || human_key
           )
-        }
-        if key_pattern.present?
-          pattern_re = I18n::Tasks::KeyPatternMatching.compile_key_pattern(key_pattern)
         end
+        pattern_re = I18n::Tasks::KeyPatternMatching.compile_key_pattern(key_pattern) if key_pattern.present?
         keys.each do |key, node|
           next if pattern_re && key !~ pattern_re
           node.value = value_proc.call(node)

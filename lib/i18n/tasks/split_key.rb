@@ -1,8 +1,9 @@
 # frozen_string_literal: true
+
 module I18n
   module Tasks
     module SplitKey
-      extend self
+      module_function
 
       # split a key by dots (.)
       # dots inside braces or parenthesis are not split on
@@ -37,7 +38,7 @@ module I18n
         return enum_for(:key_parts, key) unless block
         nesting = PARENS
         counts  = PARENS_ZEROS # dup'd later if key contains parenthesis
-        delim   = '.'.freeze
+        delim   = '.'
         from    = to = 0
         key.each_char do |char|
           if char == delim && PARENS_ZEROS == counts
@@ -46,7 +47,7 @@ module I18n
           else
             nest_i, nest_inc = nesting[char]
             if nest_i
-              counts         = counts.dup if counts.frozen?
+              counts = counts.dup if counts.frozen?
               counts[nest_i] += nest_inc
             end
             to += 1
@@ -56,12 +57,11 @@ module I18n
         true
       end
 
-      PARENS       = %w({} [] ()).inject({}) { |h, s|
+      PARENS = %w({} [] ()).each_with_object({}) do |s, h|
         i              = h.size / 2
         h[s[0].freeze] = [i, 1].freeze
         h[s[1].freeze] = [i, -1].freeze
-        h
-      }.freeze
+      end.freeze
       PARENS_ZEROS = Array.new(PARENS.size, 0).freeze
       private_constant :PARENS
       private_constant :PARENS_ZEROS

@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 module I18n::Tasks
   module Command
     module DSL
@@ -17,8 +18,7 @@ module I18n::Tasks
         def cmd(name, conf = nil)
           if conf
             conf        = conf.dup
-            conf[:args] = (args = conf[:args]) ? args.map { |arg| Symbol === arg ? arg(arg) : arg } : []
-
+            conf[:args] = (conf[:args] || []).map { |arg| arg.is_a?(Symbol) ? arg(arg) : arg }
             dsl(:cmds)[name] = conf
           else
             dsl(:cmds)[name]
