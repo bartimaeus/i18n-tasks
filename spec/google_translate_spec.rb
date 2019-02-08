@@ -12,6 +12,9 @@ RSpec.describe 'Google Translation' do
   array_test     = ['array-key', ['Hello.', nil, '', 'Goodbye.'], ['Hola.', nil, '', 'Adiós.']]
   fixnum_test    = ['numeric-key', 1, 1]
   ref_key_test   = ['ref-key', :reference, :reference]
+  handlebars_test = ['handlebars-key', "Hello {{username}}!", "Hola {{username}}!"]
+  template_test  = ['template-key', "Hello [username]!", "Hola [username]!"]
+  newline_test   = ['newline-key', "Hello %{user},\n\nWelcome to %{sitename}.", "Hola %{user},\n\nBienvenido a %{sitename}."]
 
   describe 'real world test' do
     delegate :i18n_task, :in_test_app_dir, :run_cmd, to: :TestCodebase
@@ -33,19 +36,22 @@ RSpec.describe 'Google Translation' do
         in_test_app_dir do
           task.data[:en] = build_tree('en' => {
                                         'common' => {
-                                          'a' => 'λ',
-                                          'hello'         => text_test[1],
-                                          'hello_html'    => html_test[1],
-                                          'hello_plural_html' => {
-                                            'one' => html_test_plrl[1]
-                                          },
-                                          'array_key'     => array_test[1],
-                                          'nil-value-key' => nil_value_test[1],
-                                          'empty-value-key' => empty_value_test[1],
-                                          'fixnum-key'    => fixnum_test[1],
-                                          'ref-key'       => ref_key_test[1]
+                                            'a' => 'λ',
+                                            'hello'         => text_test[1],
+                                            'hello_html'    => html_test[1],
+                                            'hello_plural_html' => {
+                                                'one' => html_test_plrl[1]
+                                            },
+                                            'array_key'     => array_test[1],
+                                            'nil-value-key' => nil_value_test[1],
+                                            'empty-value-key' => empty_value_test[1],
+                                            'fixnum-key'    => fixnum_test[1],
+                                            'ref-key'       => ref_key_test[1],
+                                            'handlebars_key' => handlebars_test[1],
+                                            'template_key'  => template_test[1],
+                                            'newline_key'   => newline_test[1]
                                         }
-                                      })
+                                    })
           task.data[:es] = build_tree('es' => {
                                         'common' => {
                                           'a' => 'λ'
@@ -61,6 +67,9 @@ RSpec.describe 'Google Translation' do
           expect(task.t('common.empty-value-key', 'es')).to eq(empty_value_test[2])
           expect(task.t('common.fixnum-key', 'es')).to eq(fixnum_test[2])
           expect(task.t('common.ref-key', 'es')).to eq(ref_key_test[2])
+          expect(task.t('common.handlebars_key', 'es')).to eq(handlebars_test[2])
+          expect(task.t('common.template_key', 'es')).to eq(template_test[2])
+          expect(task.t('common.newline_key', 'es')).to eq(newline_test[2])
           expect(task.t('common.a', 'es')).to eq('λ')
         end
       end
